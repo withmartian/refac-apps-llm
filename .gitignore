@@ -1,0 +1,15 @@
+# Virtual environment
+venv/
+
+# IDEs
+.vscode/
+.idea/
+
+# Apple
+.DS_Store
+
+# Python
+__pycache__/
+
+# Env variables
+.env
