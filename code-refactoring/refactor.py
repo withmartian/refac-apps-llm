@@ -1,3 +1,4 @@
+import subprocess
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -98,8 +99,28 @@ REFACTORING_PIPELINE = [
 
 
 def validate(code, problem_path) -> bool:
-    # TODO: ADD VALIDATION CHECKS
-    return True
+    os.makedirs("temp", exist_ok=True)
+    with open("temp/all_codes.json", "w") as f:
+        json.dump({"0": [code]}, f)
+    with open("temp/filepaths.json", "w") as f:
+        json.dump([problem_path], f)
+    subprocess.run(
+        [
+            "python3",
+            "appss/eval/test_one_solution.py",
+            "-t",
+            "temp/filepaths.json",
+            "-r",
+            "",
+            "--save",
+            "temp",
+        ]
+    )
+    try:
+        with open("temps/all_results.json", "r") as f:
+            body = json.load(f)
+    except:
+        return False
 
 
 def get_question(problem_path):
@@ -161,7 +182,7 @@ async def get_refactored_code(index, code, problem_path, max_tries=4):
         step += 1
 
     os.makedirs(os.path.join(problem_path, f"{index}"), exist_ok=True)
-    print(f"Saving checkpoint for {problem_path} {index}")
+    # print(f"Saving checkpoint for {problem_path} {index}")
     with open(os.path.join(problem_path, f"{index}/checkpoint.json"), "w") as f:
         json.dump(checkpoint, f, indent=4)
 
@@ -187,6 +208,9 @@ async def main():
         for i, code in enumerate(solutions):
             refactored_code = await get_refactored_code(i, code, problem_path)
         bar.update(1)
+        # display bar
+        bar.refresh()
+        print(f"Finished {problem_path}")
 
     await asyncio.gather(*[task(problem) for problem in problems])
 
