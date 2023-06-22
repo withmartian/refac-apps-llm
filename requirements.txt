@@ -66,6 +66,7 @@ pycryptodome==3.18.0
 pydantic==1.10.8
 Pygments==2.15.1
 python-dateutil==2.8.2
+python-dotenv==1.0.0
 pytz==2023.2
 PyYAML==6.0
 regex==2022.10.31
