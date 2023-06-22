@@ -30,10 +30,20 @@ def validate_test_case(test_case: str) -> bool:
     """
     # TODO: import the test case validator and use it here
     ...
+    # so we want the input on all the problems
+    # get the output from the problem
+
+
+def get_id(filepath: str) -> int:
+    return int(filepath.split("/")[-1])
 
 
 async def generate_test_cases(
-    problem_description: str, n: int, max_tries: int = 10
+    id: int,
+    problem_description: str,
+    n: int,
+    old_test_cases: List[str],
+    max_tries: int = 10,
 ) -> List[str]:
     """
     Generate n test cases for the given problem description.
@@ -44,18 +54,25 @@ async def generate_test_cases(
     :param n: The number of test cases to generate.
     :param max_tries: The maximum number of invalid test cases to generate before raising an exception.
     """
-    test_cases = []
-    reset_counter = 0
-    while len(test_cases) < n:
-        test_case = await generate_test_case(problem_description)
-        if validate_test_case(test_case):
-            reset_counter = 0
-            test_cases.append(test_case)
+    new_test_cases = []
+    for i in range(n):
+        if os.path.exists(f"generated/tests/{id}/{i}.txt"):
+            with open(f"generated/tests/{id}/{i}.txt", "r") as f:
+                new_test_cases.append(f.read())
+            continue
+
+        os.makedirs("generated/tests/{id}", exist_ok=True)
+        for _ in range(max_tries):
+            test_case = await generate_test_case(problem_description)
+            if validate_test_case(test_case, old_test_cases):
+                new_test_cases.append(test_case)
+                break
         else:
-            reset_counter += 1
-            if reset_counter >= max_tries:
-                return test_cases, False
-    return test_cases, True
+            return new_test_cases, False
+
+        with open(f"generated/tests/{id}/{i}.txt", "w") as f:
+            f.write(test_case)
+    return new_test_cases, True
 
 
 def get_all_APPS_filepaths() -> List[str]:
@@ -67,15 +84,12 @@ def get_all_APPS_filepaths() -> List[str]:
     ]
 
 
-def get_num_test_cases(filepath: str) -> int:
-    """
-    Return the number of existing test cases for a given filepath's problem.
-    """
+def get_curr_test_cases(filepath: str) -> List[str]:
     filepath = os.path.join(filepath, "input_output.json")
     if not os.path.exists(filepath):
-        return 0
+        return []
     with open(filepath, "r") as f:
-        return len(json.load(f)["inputs"])
+        return json.load(f)["inputs"]
 
 
 def get_problem_description(filepath: str) -> str:
@@ -89,23 +103,30 @@ def get_problem_description(filepath: str) -> str:
 
 async def main():
     async def task(filepath):
-        num_test_cases = get_num_test_cases(filepath)
+        old_test_cases = get_curr_test_cases(filepath)
+        num_test_cases = len(old_test_cases)
         if num_test_cases >= MIN_DESIRED_TEST_CASES:
             return
 
+        # TODO: REMOVE THIS LATER ONCE WE CAN GEN TEST CASES WITHOUT ANY
+        if num_test_cases < 1:
+            return
+
+        id = get_id(filepath)
         problem_description = get_problem_description(filepath)
-        test_cases, success = await generate_test_cases(
-            problem_description, MIN_DESIRED_TEST_CASES - num_test_cases
+        new_test_cases, success = await generate_test_cases(
+            id,
+            problem_description,
+            MIN_DESIRED_TEST_CASES - num_test_cases,
+            old_test_cases,
         )
         if not success:
             print(
                 f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
             )
         else:
-            print(f"Generated {len(test_cases)} test cases for {filepath}")
-            print(test_cases)
+            print(f"Generated {len(new_test_cases)} test cases for {filepath}")
 
-    # iterate through "APPS/" directory
     filepaths = get_all_APPS_filepaths()
 
     # TODO: REMOVE AFTER TESTING

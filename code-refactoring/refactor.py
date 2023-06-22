@@ -1,15 +1,18 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from tqdm import tqdm
+import asyncio
+import json
 import os
-from functools import reduce
+from collections import defaultdict
 from typing import Callable
 
 from utils import call_gpt
 
 
 def question_to_prompt(question: str) -> Callable[[str, str], str]:
-    """
-    Get a prompt function which takes in code and returns a prompt.
-    """
-
     def get_prompt(instructions: str, code: str) -> str:
         return f"""Here is a programming problem --
 ```plain text
@@ -28,7 +31,7 @@ RENAME_VARS_AND_FUNCS_PROMPT = "Please rename variables and functions for clarit
 
 DRY_PROMPT = "Please update this code to conform to DRY (don't repeat yourself) principles. Extract duplicated code into functions and turn repetitive variables into data structures."
 
-SIMPLY_PROMPT = "Please update this code to simplify it. Extract function which should be named (they are semantically meaningful on their own and distinct from their surrounding -- e.g. separate IO from computation). Inline functions which are not semantically meaningful on their own. Remove unused variables from function bodies and function signatures."
+SIMPLIFY_PROMPT = "Please update this code to simplify it. Extract function which should be named (they are semantically meaningful on their own and distinct from their surrounding -- e.g. separate IO from computation). Inline functions which are not semantically meaningful on their own. Remove unused variables from function bodies and function signatures."
 
 COMPREHENSIONS_PROMPT = "Please convert while/for-loops into list-comprehensions, dictionary-comprehensions, or generator-comprehensions."
 
@@ -36,12 +39,66 @@ COMPREHENSIONS_PROMPT = "Please convert while/for-loops into list-comprehensions
 REFACTORING_PIPELINE = [
     ("Rename Prompt", RENAME_VARS_AND_FUNCS_PROMPT),
     ("DRY Prompt", DRY_PROMPT),
-    ("Simplify Prompt", SIMPLY_PROMPT),
+    ("Simplify Prompt", SIMPLIFY_PROMPT),
     ("Comprehensions Prompt", COMPREHENSIONS_PROMPT),
 ]
 
 
+# def reorganize_methods(code):
+#     pattern = r"^def\s*\w*\(.*"
+#     splitted = re.split(pattern, code)
+#     functions = re.findall(pattern, code)
+#     res = splitted[0]
+#     splitted = splitted[1:]
+
+#     assert len(splitted) == len(functions)
+
+#     for i in range(len(splitted)):
+#         # count space in beginning of next line
+#         num_spaces = len(splitted[i]) - len(splitted[i].lstrip())
+#         # remove spaces from each one of the lines
+#         splitted[i] = "\n".join([s[num_spaces:] for s in splitted[i].split("\n")])
+#         splitted[i] = reorganize_methods(splitted[i])
+#         # add spaces back
+#         splitted[i] = "\n".join([" " * num_spaces + s for s in splitted[i].split("\n")])
+
+#     # topo sort based on function calls
+#     edges = defaultdict(list)
+#     print(functions)
+#     print(edges)
+
+#     name_regex = r"def\s+(\w+)\s*\("
+#     function_names = [re.findall(name_regex, f)[0] for f in functions]
+#     for i in range(len(functions)):
+#         for j in range(i + 1, len(functions)):
+#             if function_names[i] + "(" in splitted[j]:
+#                 edges[i].append(j)
+#             if function_names[j] + "(" in splitted[i]:
+#                 edges[j].append(i)
+
+#     # toposort the edges
+#     visited = set()
+#     order = []
+
+#     def dfs(node):
+#         if node in visited:
+#             return
+#         visited.add(node)
+#         for child in edges[node]:
+#             dfs(child)
+#         order.append(node)
+
+#     for node in functions:
+#         dfs(node)
+
+#     for i in reversed(order):
+#         res += functions[i] + splitted[i]
+
+#     return res
+
+
 def validate(code, problem_path) -> bool:
+    # TODO: ADD VALIDATION CHECKS
     return True
 
 
@@ -51,7 +108,7 @@ def get_question(problem_path):
     return problem_question
 
 
-def get_refactored_code(code, problem_path, max_tries=4):
+async def get_refactored_code(index, code, problem_path, max_tries=4):
     """
     Get refactored code for the given problem.
 
@@ -62,15 +119,29 @@ def get_refactored_code(code, problem_path, max_tries=4):
     if max_tries < 1:
         raise ValueError("max_tries must be at least 1.")
 
+    if os.path.exists(os.path.join(problem_path, f"{index}/checkpoint.json")):
+        return
+
     problem_question = get_question(problem_path)
     get_prompt = question_to_prompt(problem_question)
 
     working_code = code
+    checkpoint = defaultdict(list)
+    step = 0
     for name, prompt in REFACTORING_PIPELINE:
         prompt = get_prompt(prompt, working_code)
+        starting_code = working_code
+        new_code_history = []
 
         for _ in range(max_tries):
-            new_code = call_gpt(prompt)
+            new_code, success = await call_gpt(prompt)
+            if not success:
+                print(
+                    f"Failed to generate code for {problem_path} {index}. Skipping the refactoring task."
+                )
+                return
+            new_code_history.append(new_code)
+
             if validate(new_code, problem_path):
                 working_code = new_code
                 break
@@ -79,4 +150,150 @@ def get_refactored_code(code, problem_path, max_tries=4):
                 f"Failed to generate valid code for {name} within {max_tries} tries. Skipping the refactoring task."
             )
 
+        checkpoint[name].append(
+            {
+                "prompt": prompt,
+                "old_code": starting_code,
+                "new_code": new_code_history,
+                "step": step,
+            }
+        )
+        step += 1
+
+    os.makedirs(os.path.join(problem_path, f"{index}"), exist_ok=True)
+    print(f"Saving checkpoint for {problem_path} {index}")
+    with open(os.path.join(problem_path, f"{index}/checkpoint.json"), "w") as f:
+        json.dump(checkpoint, f, indent=4)
+
     return working_code
+
+
+async def main():
+    training_path = "APPS/train"
+    problems = sorted(os.listdir(training_path))
+
+    # TODO: remove this restriction after testing
+    # problems = problems[:5]
+    bar = tqdm(total=len(problems))
+
+    async def task(problem):
+        problem_path = os.path.join(training_path, problem)
+        if not os.path.isdir(problem_path):
+            return
+
+        with open(os.path.join(problem_path, "solutions.json"), "r") as f:
+            solutions = json.load(f)
+
+        for i, code in enumerate(solutions):
+            refactored_code = await get_refactored_code(i, code, problem_path)
+        bar.update(1)
+
+    await asyncio.gather(*[task(problem) for problem in problems])
+
+    bar.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+
+# example_scripts = [
+#     """
+# def is_prime(number):
+#     if number < 2:
+#         return False
+#     for i in range(2, number):
+#         if number % i == 0:
+#             return False
+#     return True
+
+# def print_prime_numbers(n):
+#     primes = [p for p in range(2, n + 1) if is_prime(p)]
+#     print(primes)
+
+# print_prime_numbers(50)
+# """,
+#     """
+# def fibonacci_recursive(n):
+#     if n == 0 or n == 1:
+#         return n
+#     return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
+
+# def print_fibonacci_recursive(n):
+#     print(f"The {n}th Fibonacci number is {fibonacci_recursive(n)}")
+
+# print_fibonacci_recursive(10)
+# """,
+#     """
+
+# from random import randint
+
+# def generate_random_list(size):
+#     result = [randint(1, 100) for _ in range(size)]
+#     return result
+
+# def random_sum(size):
+#     numbers = generate_random_list(size)
+#     return sum(numbers)
+
+# print(random_sum(10))
+# """,
+#     """
+# def reverse_string(s):
+#     return s[::-1]
+
+# def reverse_and_print(s):
+#     print(reverse_string(s))
+
+# reverse_and_print("Example string")
+# """,
+#     """
+# def greet(name):
+#     return "Hello, " + name + "!"
+
+# def greet_and_print(name):
+#     print(greet(name))
+
+# greet_and_print("John")
+# """,
+#     """
+# def main_function():
+#     def helper_function():
+#         print("This is the helper function")
+
+#     helper_function()
+#     print("This is the main function")
+
+# main_function()
+# """,
+#     """
+# def recursive_function(n):
+#     if n > 0:
+#         print(n)
+#         recursive_function(n-1)
+
+# recursive_function(5)
+# """,
+#     """
+# def outer_function():
+#     print("This is the outer function")
+
+#     def inner_function_1():
+#         print("This is the inner function 1")
+
+#     def inner_function_2():
+#         inner_function_1()
+#         print("This is the inner function 2")
+
+#     inner_function_2()
+
+# outer_function()
+# """,
+# ]
+
+# for script in example_scripts:
+#     print(script)
+#     input()
+#     print(reorganize_methods(script))
+#     print()
+#     input()
