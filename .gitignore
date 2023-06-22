@@ -13,3 +13,6 @@ __pycache__/
 
 # Env variables
 .env
+
+# Data
+APPS/
