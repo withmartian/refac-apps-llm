@@ -196,7 +196,6 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
 
     # dump the current test cases
     os.makedirs(start_path, exist_ok=True)
-    print("Checkpoint #0: ", test_cases)
     with open(os.path.join(start_path, "inputs_outputs.json"), "w") as f:
         body = {
             "input": [tc[0] for tc in test_cases],
@@ -204,7 +203,6 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
         }
         print("body: ", body)
         json.dump(body, f, indent=4)
-    print("Checkpoint #1: ", test_cases)
     return test_cases
 
 
@@ -220,7 +218,6 @@ def get_all_APPS_filepaths() -> List[str]:
 async def main(output_dir):
     async def task(filepath):
         test_cases = await generate_test_cases(filepath, output_dir)
-        print("Checkpoint #2: ", test_cases)
         if len(test_cases) < MIN_DESIRED_TEST_CASES:
             print(
                 f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
@@ -232,11 +229,6 @@ async def main(output_dir):
             )
 
     filepaths = get_all_APPS_filepaths()
-
-    # TODO: REMOVE AFTER TESTING
-    # NOTE: this limits the number of files to process for testing purposes
-    filepaths = filepaths[:10]
-
     await asyncio.gather(*[task(filepath) for filepath in filepaths])
 
 
