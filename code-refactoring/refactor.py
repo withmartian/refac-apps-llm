@@ -1,4 +1,5 @@
 import subprocess
+import sys
 
 from dotenv import load_dotenv
 
@@ -12,6 +13,8 @@ from typing import Callable
 
 from tqdm import tqdm
 from utils import call_gpt
+
+import numpy as np
 
 
 def question_to_prompt(question: str) -> Callable[[str, str], str]:
@@ -100,26 +103,28 @@ REFACTORING_PIPELINE = [
 
 
 def validate(code, problem_path) -> bool:
-    os.makedirs("temp", exist_ok=True)
-    with open("temp/all_codes.json", "w") as f:
+    os.makedirs("refactor-temp", exist_ok=True)
+    with open("refactor-temp/all_codes.json", "w") as f:
         json.dump({"0": [code]}, f)
-    with open("temp/filepaths.json", "w") as f:
+    with open("refactor-temp/filepaths.json", "w") as f:
         json.dump([problem_path], f)
     subprocess.run(
         [
             "python3",
-            "appss/eval/test_one_solution.py",
+            "apps/eval/test_one_solution.py",
             "-t",
-            "temp/filepaths.json",
+            "refactor-temp/filepaths.json",
             "-r",
             "",
             "--save",
-            "temp",
+            "refactor-temp",
         ]
     )
     try:
-        with open("temps/all_results.json", "r") as f:
+        with open("refactor-temp/all_results.json", "r") as f:
             body = json.load(f)
+            res = np.all(body["0"])
+            return res
     except:
         return False
 
@@ -130,25 +135,18 @@ def get_question(problem_path):
     return problem_question
 
 
-async def get_refactored_code(index, code, problem_path, max_tries=4):
-    """
-    Get refactored code for the given problem.
+def clean_up_gpt_turbo(code):
+    if "```" in code:
+        code = code.split("```")[1]
+    try:
+        code = json.loads(code)
+    except:
+        pass
+    return code
 
-    :param code: The code to refactor.
-    :param problem_path: The path to the problem.
-    :param max_tries: The maximum number of invalid refactored code to generate before raising an exception. Defaults to 4.
-    """
-    if max_tries < 1:
-        raise ValueError("max_tries must be at least 1.")
 
-    if os.path.exists(os.path.join(problem_path, f"{index}/checkpoint.json")):
-        return
-
-    problem_question = get_question(problem_path)
-    get_prompt = question_to_prompt(problem_question)
-
-    working_code = code
-    checkpoint = defaultdict(list)
+async def refactor(problem_path, get_prompt, working_code, max_tries=4):
+    checkpoints = defaultdict(list)
     step = 0
     for name, prompt in REFACTORING_PIPELINE:
         prompt = get_prompt(prompt, working_code)
@@ -158,10 +156,8 @@ async def get_refactored_code(index, code, problem_path, max_tries=4):
         for _ in range(max_tries):
             new_code, success = await call_gpt(prompt)
             if not success:
-                print(
-                    f"Failed to generate code for {problem_path} {index}. Skipping the refactoring task."
-                )
-                return
+                return {}
+            new_code = clean_up_gpt_turbo(new_code)
             new_code_history.append(new_code)
 
             if validate(new_code, problem_path):
@@ -172,30 +168,68 @@ async def get_refactored_code(index, code, problem_path, max_tries=4):
                 f"Failed to generate valid code for {name} within {max_tries} tries. Skipping the refactoring task."
             )
 
-        checkpoint[name].append(
+        checkpoints[name].append(
             {
                 "prompt": prompt,
                 "old_code": starting_code,
                 "new_code": new_code_history,
                 "step": step,
+                "success": working_code == new_code,
             }
         )
         step += 1
-
-    os.makedirs(os.path.join(problem_path, f"{index}"), exist_ok=True)
-    # print(f"Saving checkpoint for {problem_path} {index}")
-    with open(os.path.join(problem_path, f"{index}/checkpoint.json"), "w") as f:
-        json.dump(checkpoint, f, indent=4)
-
-    return working_code
+    return checkpoints
 
 
-async def main():
+async def refactor_code(index, code, problem_path, output_dir):
+    """
+    Get refactored code for the given problem.
+
+    :param code: The code to refactor.
+    :param problem_path: The path to the problem.
+    :param max_tries: The maximum number of invalid refactored code to generate before raising an exception. Defaults to 4.
+    """
+    problem_question = get_question(problem_path)
+    get_prompt = question_to_prompt(problem_question)
+
+    id = problem_path.split("/")[-1]
+    destination = os.path.join(output_dir, f"{id}/{index}.json")
+
+    # check if it already exists
+    if os.path.exists(destination):
+        return
+
+    # try it first
+    if not validate(code, problem_path):
+        package = {
+            "original_worked": False,
+            "gpt-failure": False,
+            "refactoring_steps": [],
+        }
+    elif not (checkpoints := await refactor(problem_path, get_prompt, code)):
+        package = {
+            "original_worked": True,
+            "gpt-failure": True,
+            "refactoring_steps": [],
+        }
+    else:
+        package = {
+            "original_worked": True,
+            "gpt-failure": False,
+            "refactoring_steps": checkpoints,
+        }
+
+    os.makedirs(os.path.join(output_dir, id), exist_ok=True)
+    with open(destination, "w") as f:
+        json.dump(package, f)  # , indent=4)
+
+
+async def main(output_dir: str):
     training_path = "APPS/train"
     problems = sorted(os.listdir(training_path))
 
     # TODO: remove this restriction after testing
-    # problems = problems[:5]
+    problems = problems[:1]
     bar = tqdm(total=len(problems))
 
     async def task(problem):
@@ -207,7 +241,7 @@ async def main():
             solutions = json.load(f)
 
         for i, code in enumerate(solutions):
-            refactored_code = await get_refactored_code(i, code, problem_path)
+            await refactor_code(i, code, problem_path, output_dir)
         bar.update(1)
         # display bar
         bar.refresh()
@@ -219,7 +253,12 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # take in argument that is destination file path
+    if len(sys.argv) != 2:
+        print("Usage: python3 refactor.py <output_dir>")
+        exit(1)
+    output_dir = sys.argv[1]
+    asyncio.run(main(output_dir))
 
 
 # example_scripts = [
