@@ -217,7 +217,8 @@ def get_all_APPS_filepaths() -> List[str]:
     Return a list of all filepaths in the APPS/train directory.
     """
     return [
-        os.path.join("APPS/train", filename) for filename in os.listdir("APPS/train")
+        os.path.join("APPS/train", filename)
+        for filename in sorted(os.listdir("APPS/train"))
     ]
 
 
@@ -239,7 +240,6 @@ async def main(output_dir, start=0, end=float("inf")):
 
     # limit to a subset of the filepaths
     filepaths = filepaths[start:end]
-
     await asyncio.gather(*[task(filepath) for filepath in filepaths])
 
 
