@@ -31,7 +31,6 @@ Some example inputs separated by new lines:
 ---
 Make sure to provide an input not in the list above and use proper formatting:
 """
-    print("prompt: ", prompt)
     return await call_gpt(prompt)
 
 
@@ -151,6 +150,12 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
 
     If the number of invalid test cases generated exceeds cap, exits early and returns the valid test cases.
     """
+    id: str = filepath.split("/")[-1]
+    start_path = os.path.join(output_dir, id)
+    if os.path.exists(os.path.join(start_path, "inputs_outputs.json")):
+        print("Test cases already generated.")
+        return
+
     problem_description = get_problem_description(filepath)
     test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
     start_num = len(test_cases)
@@ -186,8 +191,6 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
             break
 
     # dump the current test cases
-    id: str = filepath.split("/")[-1]
-    start_path = os.path.join(output_dir, id)
     os.makedirs(start_path, exist_ok=True)
     with open(os.path.join(start_path, "inputs_outputs.json"), "w") as f:
         body = {
@@ -195,7 +198,6 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
             "output": [tc[1] for tc in test_cases],
         }
         json.dump(body, f, indent=4)
-
     return test_cases
 
 
@@ -225,7 +227,7 @@ async def main(output_dir):
 
     # TODO: REMOVE AFTER TESTING
     # NOTE: this limits the number of files to process for testing purposes
-    filepaths = filepaths[:1]
+    filepaths = filepaths[:10]
 
     await asyncio.gather(*[task(filepath) for filepath in filepaths])
 
