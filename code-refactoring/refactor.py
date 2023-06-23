@@ -135,6 +135,12 @@ def get_question(problem_path):
     return problem_question
 
 
+def clean_up_gpt_turbo(code):
+    if "```" in code:
+        code = code.split("```")[1]
+    return code
+
+
 async def refactor(problem_path, get_prompt, working_code, max_tries=4):
     checkpoints = defaultdict(list)
     step = 0
@@ -147,6 +153,7 @@ async def refactor(problem_path, get_prompt, working_code, max_tries=4):
             new_code, success = await call_gpt(prompt)
             if not success:
                 return {}
+            new_code = clean_up_gpt_turbo(new_code)
             new_code_history.append(new_code)
 
             if validate(new_code, problem_path):
