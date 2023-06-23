@@ -215,7 +215,7 @@ def get_all_APPS_filepaths() -> List[str]:
     ]
 
 
-async def main(output_dir):
+async def main(output_dir, start=0, end=float("inf")):
     async def task(filepath):
         test_cases = await generate_test_cases(filepath, output_dir)
         if len(test_cases) < MIN_DESIRED_TEST_CASES:
@@ -229,13 +229,20 @@ async def main(output_dir):
             )
 
     filepaths = get_all_APPS_filepaths()
+    end = min(end, len(filepaths))
+
+    # limit to a subset of the filepaths
+    filepaths = filepaths[start:end]
+
     await asyncio.gather(*[task(filepath) for filepath in filepaths])
 
 
 if __name__ == "__main__":
     # take in argument that is destination file path
-    if len(sys.argv) != 2:
-        print("Usage: python3 generate_test_cases.py <output_dir>")
+    if len(sys.argv) < 2:
+        print("Usage: python3 generate_test_cases.py <output_dir> (<start>) (<end>)")
         exit(1)
     output_dir = sys.argv[1]
-    asyncio.run(main(output_dir))
+    start = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    end = int(sys.argv[3]) if len(sys.argv) > 3 else float("inf")
+    asyncio.run(main(output_dir, start, end))
