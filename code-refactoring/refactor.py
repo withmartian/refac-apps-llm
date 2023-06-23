@@ -139,8 +139,7 @@ def clean_up_gpt_turbo(code):
     if "```" in code:
         code = code.split("```")[1]
     try:
-        new_code = json.loads(code)
-        code = new_code
+        code = json.loads(code)
     except:
         pass
     return code

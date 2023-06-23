@@ -18,8 +18,6 @@ MAX_TRIES = 3
 
 
 async def generate_tc_input(problem_description, prior_test_cases) -> Optional[str]:
-    # TODO: check if this prompt is good enough
-    # get the inputs only
     inputs = "\n".join(repr(input) for input, _ in prior_test_cases)
     prompt = f"""You are a test case input generator.
 Given the following problem description:
@@ -52,7 +50,6 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[Any]
     # open original test cases
     with open(os.path.join(filepath, "input_output.json"), "r") as f:
         data = json.load(f)
-        print("data: ", json.dumps(data))
 
     # dump the actual test cases
     with open("generate-temp/input_output.json", "w") as f:
@@ -78,12 +75,9 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[Any]
     )
     try:
         with open("generate-temp/the_results.json", "r") as f:
-            res = json.load(f)
-            print("res: ", res)
-            return res
+            return json.load(f)
     except:
-        pass
-    return []
+        return []
 
 
 def get_shared_output(outputs: List[Any]) -> Optional[str]:
@@ -117,10 +111,13 @@ def generate_tc_output(test_case: str, filepath: str) -> Optional[str]:
     # get existing solutions
     solutions = get_solutions(filepath)
 
+    # generate outputs
     outputs = get_outputs(solutions, test_case, filepath)
 
-    # the ith output is a list of possible formats of the output
-    return get_shared_output(outputs)
+    # get common output if it exists
+    common_output = get_shared_output(outputs)
+
+    return common_output
 
 
 def get_curr_test_cases(filepath: str) -> List[Tuple[str, str]]:
@@ -139,6 +136,13 @@ def get_problem_description(filepath: str) -> str:
     filepath = os.path.join(filepath, "question.txt")
     with open(filepath, "r") as f:
         return f.read()
+
+
+def try_parse_json(s: str) -> Any:
+    try:
+        return json.loads(s)
+    except:
+        return s
 
 
 async def generate_test_cases(filepath, output_dir) -> List[str]:
@@ -162,14 +166,21 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
                 continue
 
             print("tc_input: ", tc_input)
+            tc_input = try_parse_json(tc_input)
 
             tc_output = generate_tc_output(tc_input, filepath)
+            if tc_output is None:
+                # NOTE: likely won't be uncommon
+                continue
 
-            # if the test case is valid, add it to the list
-            if tc_output is not None:
-                test_cases.append((tc_input, tc_output))
-                break
+            print("tc_output: ", tc_output)
+            tc_output = try_parse_json(tc_output)
+
+            # found a valid test case
+            test_cases.append((tc_input, tc_output))
+            break
         else:
+            # failed to generate a valid test case after X tries so stop trying
             print(f"Failed to generate enough valid test cases for {filepath}.")
             print(f"Started with {start_num} test cases.")
             break
