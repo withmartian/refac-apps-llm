@@ -231,16 +231,21 @@ def get_all_APPS_filepaths() -> List[str]:
 
 async def main(output_dir, start=0, end=float("inf")):
     async def task(filepath):
-        test_cases = await generate_test_cases(filepath, output_dir)
-        if len(test_cases) < MIN_DESIRED_TEST_CASES:
-            print(
-                f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
-            )
-            print(f"Only {len(test_cases)} test cases were generated for {filepath}")
-        else:
-            print(
-                f"Successfully accumulated {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
-            )
+        try:
+            test_cases = await generate_test_cases(filepath, output_dir)
+            if len(test_cases) < MIN_DESIRED_TEST_CASES:
+                print(
+                    f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
+                )
+                print(
+                    f"Only {len(test_cases)} test cases were generated for {filepath}"
+                )
+            else:
+                print(
+                    f"Successfully accumulated {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
+                )
+        except:
+            pass
 
     filepaths = get_all_APPS_filepaths()
     end = min(end, len(filepaths))
