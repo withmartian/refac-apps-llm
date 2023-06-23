@@ -52,7 +52,7 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[Any]
     # open original test cases
     with open(os.path.join(filepath, "input_output.json"), "r") as f:
         data = json.load(f)
-        print("data: ", json.dumps(data, indent=4))
+        print("data: ", json.dumps(data))
 
     # dump the actual test cases
     with open("generate-temp/input_output.json", "w") as f:
@@ -91,14 +91,19 @@ def get_shared_output(outputs: List[Any]) -> Optional[str]:
         return None
 
     # get outputs
-    values = [repr(output) for output in outputs]
+    l = len(outputs)
+    d = dict()
+    for output in outputs:
+        if output is not None:
+            d[repr(output)] = output
+    values = [repr(output) for output in outputs if output is not None]
 
     # get frequency of each output
     freq = Counter(values)
     most_common_item, most_common_freq = freq.most_common(1)[0]
 
-    if most_common_freq >= len(outputs) / 2:
-        return most_common_item
+    if most_common_freq >= l / 2:
+        return d[most_common_item]
     return None
 
 
