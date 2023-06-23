@@ -169,6 +169,7 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
     except:
         print("Failed to get problem description.")
         # dump marker
+        os.makedirs(start_path, exist_ok=True)
         with open(os.path.join(start_path, "marker.txt"), "w") as f:
             f.write("FAILED TO GET PROBLEM DESCRIPTION")
         return []
