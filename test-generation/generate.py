@@ -1,3 +1,4 @@
+from collections import Counter
 import subprocess
 import sys
 
@@ -37,48 +38,61 @@ def get_solutions(filepath):
         return json.load(f)
 
 
-def get_output(code: str, tc_input: str, filepath: str) -> List[str]:
-    # TODO:
-    # temps/filepaths.json -- ["gotta-pick-the-filepath"]
-    # <>
-    # save
-    # <>
-    # temps/all_codes.json -- {"0": ["solution1", "solution2"]}
-    # <>
-    os.makedirs("temp", exist_ok=True)
+def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[str]:
+    # fn_name...
+    with open("temp/filepath.json", "w"):
+        json.dump([""], f)
 
-    # subprocess.run(
-    #     [
-    #         "python3",
-    #         "../appss/eval/test_one_solution.py",
-    #         "-t",
-    #         "temps/filepaths.json",
-    #         "-r",
-    #         "",
-    #         "--save",
-    #         "temps",
-    #     ]
-    # )
+    # open original test cases
+    with open(os.path.join(filepath, "input_output.json"), "r") as f:
+        data = json.load(f)
+
+    # dump the actual test cases
+    with open("temp/input_output.json", "w") as f:
+        data["inputs"] = [tc_input]
+        data["outputs"] = ["junk"]
+        json.dump(data, f)
+
+    # dump the code
+    with open("temp/all_codes.json", "w") as f:
+        json.dump({"0": solutions}, f)
+
+    os.makedirs("temp", exist_ok=True)
+    subprocess.run(
+        [
+            "python3",
+            "apps/eval/test_one_solution.py",
+            "-t",
+            "filepath.json",
+            "-r",
+            "",
+            "--save",
+            "temp",
+        ]
+    )
     try:
-        with open("temps/all_results.json", "r") as f:
-            return json.load(f)["0"]
+        with open("temps/the_results.json", "r") as f:
+            res = json.load(f)
+            print("res: ", res)
+            return res
     except:
         pass
     return []
 
 
-def get_shared_output(outputs: List[List[str]]):
+def get_shared_output(outputs: List[List[str]]) -> Optional[str]:
     if len(outputs) < 1:
         return None
 
-    first_output = outputs[0]
-    for possible in first_output:
-        for output in outputs:
-            if possible not in output:
-                break
-        else:
-            # we found a valid output
-            return possible
+    # get outputs
+    values = [repr(output[0]) for output in outputs]
+
+    # get frequency of each output
+    freq = Counter(values)
+    most_common_item, most_common_freq = freq.most_common(1)[0]
+
+    if most_common_freq >= len(outputs) / 2:
+        return most_common_item
     return None
 
 
@@ -89,10 +103,7 @@ def generate_tc_output(test_case: str, filepath: str) -> Optional[str]:
     # get existing solutions
     solutions = get_solutions(filepath)
 
-    outputs = []
-    for code in solutions:
-        # get the possible outputs
-        outputs.append(get_output(code, test_case, filepath))
+    outputs = get_outputs(solutions, test_case, filepath)
 
     # the ith output is a list of possible formats of the output
     return get_shared_output(outputs)
