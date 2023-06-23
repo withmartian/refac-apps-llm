@@ -102,6 +102,10 @@ REFACTORING_PIPELINE = [
 
 
 def validate(code, problem_path) -> bool:
+    # check if tests exist
+    if not os.path.exists(os.path.join(problem_path, "input_output.json")):
+        return False
+
     os.makedirs("temp", exist_ok=True)
     with open("temp/all_codes.json", "w") as f:
         json.dump({"0": [code]}, f)
@@ -122,7 +126,8 @@ def validate(code, problem_path) -> bool:
     try:
         with open("temps/all_results.json", "r") as f:
             body = json.load(f)
-            return np.all(body["0"])
+            res = np.all(body["0"])
+            return res
     except:
         return False
 
@@ -198,7 +203,7 @@ async def main():
     problems = sorted(os.listdir(training_path))
 
     # TODO: remove this restriction after testing
-    # problems = problems[:5]
+    problems = problems[:1]
     bar = tqdm(total=len(problems))
 
     async def task(problem):
