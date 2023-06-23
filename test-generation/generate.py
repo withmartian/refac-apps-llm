@@ -156,8 +156,9 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
     id: str = filepath.split("/")[-1]
     start_path = os.path.join(output_dir, id)
     if os.path.exists(os.path.join(start_path, "inputs_outputs.json")):
-        print("Test cases already generated.")
-        return
+        print(f"Test cases for {id} already generated.")
+        with open(os.path.join(start_path, "inputs_outputs.json"), "r") as f:
+            return json.load(f)
 
     problem_description = get_problem_description(filepath)
     test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
