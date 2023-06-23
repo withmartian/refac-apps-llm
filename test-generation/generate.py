@@ -198,6 +198,7 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
             "output": [tc[1] for tc in test_cases],
         }
         json.dump(body, f, indent=4)
+    print("Checkpoint #1: ", test_cases)
     return test_cases
 
 
@@ -213,6 +214,7 @@ def get_all_APPS_filepaths() -> List[str]:
 async def main(output_dir):
     async def task(filepath):
         test_cases = await generate_test_cases(filepath, output_dir)
+        print("Checkpoint #2: ", test_cases)
         if len(test_cases) < MIN_DESIRED_TEST_CASES:
             print(
                 f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
