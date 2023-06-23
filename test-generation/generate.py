@@ -30,6 +30,7 @@ Some past test cases are (in JSON list format):
 ---
 Make sure to provide an input not in the list above and use proper formatting:
 """
+    print("prompt: ", prompt)
     return await call_gpt(prompt)
 
 
@@ -138,6 +139,8 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
     test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
     start_num = len(test_cases)
 
+    print("prior test cases: ", test_cases)
+
     while len(test_cases) < MIN_DESIRED_TEST_CASES:
         for _ in range(MAX_TRIES):
             # generate a test case
@@ -145,6 +148,9 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
             if tc_input is None:
                 print("Failed to generate test case input.")
                 continue
+
+            print("tc_input: ", tc_input)
+
             tc_output = generate_tc_output(tc_input, filepath)
 
             # if the test case is valid, add it to the list
