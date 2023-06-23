@@ -13,6 +13,8 @@ from typing import Callable
 from tqdm import tqdm
 from utils import call_gpt
 
+import numpy as np
+
 
 def question_to_prompt(question: str) -> Callable[[str, str], str]:
     def get_prompt(instructions: str, code: str) -> str:
@@ -108,7 +110,7 @@ def validate(code, problem_path) -> bool:
     subprocess.run(
         [
             "python3",
-            "appss/eval/test_one_solution.py",
+            "apps/eval/test_one_solution.py",
             "-t",
             "temp/filepaths.json",
             "-r",
@@ -120,6 +122,7 @@ def validate(code, problem_path) -> bool:
     try:
         with open("temps/all_results.json", "r") as f:
             body = json.load(f)
+            return np.all(body["0"])
     except:
         return False
 
