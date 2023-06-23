@@ -207,7 +207,7 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
 
     # dump marker
     with open(os.path.join(start_path, "marker.txt"), "w") as f:
-        f.write("")
+        f.write("MARKER")
 
     return test_cases
 
