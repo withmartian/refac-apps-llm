@@ -164,7 +164,11 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
         except:
             pass
 
-    problem_description = get_problem_description(filepath)
+    try:
+        problem_description = get_problem_description(filepath)
+    except:
+        print("Failed to get problem description.")
+        return []
     test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
     start_num = len(test_cases)
 
