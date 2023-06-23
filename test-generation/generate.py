@@ -9,7 +9,7 @@ load_dotenv()
 import asyncio
 import json
 import os
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from utils import call_gpt
 
@@ -38,7 +38,7 @@ def get_solutions(filepath):
         return json.load(f)
 
 
-def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[str]:
+def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[Any]:
     os.makedirs("generate-temp", exist_ok=True)
 
     # fn_name...
@@ -52,7 +52,7 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[str]
     # dump the actual test cases
     with open("generate-temp/input_output.json", "w") as f:
         data["inputs"] = [tc_input]
-        data["outputs"] = ["junk"]
+        data["outputs"] = [""]
         json.dump(data, f)
 
     # dump the code
@@ -66,7 +66,7 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[str]
             "-t",
             "generate-temp/filepaths.json",
             "-r",
-            "",
+            "generate-temp",
             "--save",
             "generate-temp",
         ]
@@ -81,12 +81,12 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[str]
     return []
 
 
-def get_shared_output(outputs: List[List[str]]) -> Optional[str]:
+def get_shared_output(outputs: List[Any]) -> Optional[str]:
     if len(outputs) < 1:
         return None
 
     # get outputs
-    values = [repr(output[0]) for output in outputs]
+    values = [repr(output) for output in outputs]
 
     # get frequency of each output
     freq = Counter(values)
@@ -143,6 +143,7 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
             # generate a test case
             tc_input = await generate_tc_input(problem_description, test_cases)
             if tc_input is None:
+                print("Failed to generate test case input.")
                 continue
             tc_output = generate_tc_output(tc_input, filepath)
 
