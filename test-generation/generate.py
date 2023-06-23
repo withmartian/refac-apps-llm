@@ -195,11 +195,13 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
 
     # dump the current test cases
     os.makedirs(start_path, exist_ok=True)
+    print("Checkpoint #0: ", test_cases)
     with open(os.path.join(start_path, "inputs_outputs.json"), "w") as f:
         body = {
             "input": [tc[0] for tc in test_cases],
             "output": [tc[1] for tc in test_cases],
         }
+        print("body: ", body)
         json.dump(body, f, indent=4)
     print("Checkpoint #1: ", test_cases)
     return test_cases
