@@ -103,29 +103,25 @@ REFACTORING_PIPELINE = [
 
 
 def validate(code, problem_path) -> bool:
-    # check if tests exist
-    if not os.path.exists(os.path.join(problem_path, "input_output.json")):
-        return False
-
-    os.makedirs("temp", exist_ok=True)
-    with open("temp/all_codes.json", "w") as f:
+    os.makedirs("refactor-temp", exist_ok=True)
+    with open("refactor-temp/all_codes.json", "w") as f:
         json.dump({"0": [code]}, f)
-    with open("temp/filepaths.json", "w") as f:
+    with open("refactor-temp/filepaths.json", "w") as f:
         json.dump([problem_path], f)
     subprocess.run(
         [
             "python3",
             "apps/eval/test_one_solution.py",
             "-t",
-            "temp/filepaths.json",
+            "refactor-temp/filepaths.json",
             "-r",
             "",
             "--save",
-            "temp",
+            "refactor-temp",
         ]
     )
     try:
-        with open("temps/all_results.json", "r") as f:
+        with open("refactor-temp/all_results.json", "r") as f:
             body = json.load(f)
             res = np.all(body["0"])
             return res

@@ -39,8 +39,10 @@ def get_solutions(filepath):
 
 
 def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[str]:
+    os.makedirs("generate-temp", exist_ok=True)
+
     # fn_name...
-    with open("temp/filepath.json", "w"):
+    with open("generate-temp/filepaths.json", "w") as f:
         json.dump([""], f)
 
     # open original test cases
@@ -48,30 +50,29 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[str]
         data = json.load(f)
 
     # dump the actual test cases
-    with open("temp/input_output.json", "w") as f:
+    with open("generate-temp/input_output.json", "w") as f:
         data["inputs"] = [tc_input]
         data["outputs"] = ["junk"]
         json.dump(data, f)
 
     # dump the code
-    with open("temp/all_codes.json", "w") as f:
+    with open("generate-temp/all_codes.json", "w") as f:
         json.dump({"0": solutions}, f)
 
-    os.makedirs("temp", exist_ok=True)
     subprocess.run(
         [
             "python3",
             "apps/eval/test_one_solution.py",
             "-t",
-            "filepath.json",
+            "generate-temp/filepaths.json",
             "-r",
             "",
             "--save",
-            "temp",
+            "generate-temp",
         ]
     )
     try:
-        with open("temps/the_results.json", "r") as f:
+        with open("generate-temp/the_results.json", "r") as f:
             res = json.load(f)
             print("res: ", res)
             return res
