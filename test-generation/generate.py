@@ -158,7 +158,9 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
     if os.path.exists(os.path.join(start_path, "inputs_outputs.json")):
         print(f"Test cases for {id} already generated.")
         with open(os.path.join(start_path, "inputs_outputs.json"), "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            if len(data["inputs"]) >= MIN_DESIRED_TEST_CASES:
+                return zip(data["inputs"], data["outputs"])
 
     problem_description = get_problem_description(filepath)
     test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
