@@ -17,3 +17,5 @@ __pycache__/
 # Data
 APPS/
 appss/
+temp/
+test-cases/

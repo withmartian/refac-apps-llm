@@ -1,4 +1,6 @@
 import subprocess
+import sys
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,7 +16,7 @@ MIN_DESIRED_TEST_CASES = 10
 MAX_TRIES = 3
 
 
-async def generate_tc_input(problem_description, prior_test_cases) -> str:
+async def generate_tc_input(problem_description, prior_test_cases) -> Optional[str]:
     # TODO: check if this prompt is good enough
     prompt = f"""You are a test case input generator.
 Given the following problem description:
@@ -44,25 +46,25 @@ def get_output(code: str, tc_input: str, filepath: str) -> List[str]:
     # temps/all_codes.json -- {"0": ["solution1", "solution2"]}
     # <>
     os.makedirs("temp", exist_ok=True)
-    with open("temps/all_codes.json", "w") as f:
-        json.dump({"0": [code]}, f)
-    with open("temps/filepaths.json", "w") as f:
-        json.dump([filepath], f)
 
-    subprocess.run(
-        [
-            "python3",
-            "../appss/eval/test_one_solution.py",
-            "-t",
-            "temps/filepaths.json",
-            "-r",
-            "",
-            "--save",
-            "temps",
-        ]
-    )
-    with open("temps/all_results.json", "r") as f:
-        return json.load(f)["0"]
+    # subprocess.run(
+    #     [
+    #         "python3",
+    #         "../appss/eval/test_one_solution.py",
+    #         "-t",
+    #         "temps/filepaths.json",
+    #         "-r",
+    #         "",
+    #         "--save",
+    #         "temps",
+    #     ]
+    # )
+    try:
+        with open("temps/all_results.json", "r") as f:
+            return json.load(f)["0"]
+    except:
+        pass
+    return []
 
 
 def get_shared_output(outputs: List[List[str]]):
@@ -77,6 +79,7 @@ def get_shared_output(outputs: List[List[str]]):
         else:
             # we found a valid output
             return possible
+    return None
 
 
 def generate_tc_output(test_case: str, filepath: str) -> Optional[str]:
@@ -101,7 +104,7 @@ def get_curr_test_cases(filepath: str) -> List[Tuple[str, str]]:
         return []
     with open(filepath, "r") as f:
         data = json.load(f)
-        return zip(data["inputs"], data["outputs"])
+        return list(zip(data["inputs"], data["outputs"]))
 
 
 def get_problem_description(filepath: str) -> str:
@@ -113,34 +116,38 @@ def get_problem_description(filepath: str) -> str:
         return f.read()
 
 
-async def generate_test_cases(filepath) -> List[str]:
+async def generate_test_cases(filepath, output_dir) -> List[str]:
     """
     Generate n test cases for the given problem description.
 
     If the number of invalid test cases generated exceeds cap, exits early and returns the valid test cases.
     """
-    test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
     problem_description = get_problem_description(filepath)
+    test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
+    start_num = len(test_cases)
+
     while len(test_cases) < MIN_DESIRED_TEST_CASES:
         for _ in range(MAX_TRIES):
+            # generate a test case
             tc_input = await generate_tc_input(problem_description, test_cases)
+            if tc_input is None:
+                continue
             tc_output = generate_tc_output(tc_input, filepath)
 
+            # if the test case is valid, add it to the list
             if tc_output is not None:
                 test_cases.append((tc_input, tc_output))
                 break
         else:
             print(f"Failed to generate enough valid test cases for {filepath}.")
+            print(f"Started with {start_num} test cases.")
             break
 
     # dump the current test cases
-    orig_path = os.path.join(filepath, "input_output.json")
-    with open(
-        os.path.join(
-            "drive/MyDrive/Other/Martian/refactor-paper/test-cases", orig_path
-        ),
-        "w",
-    ) as f:
+    id: str = filepath.split("/")[-1]
+    start_path = os.path.join(output_dir, id)
+    os.makedirs(start_path, exist_ok=True)
+    with open(os.path.join(start_path, "inputs_outputs.json"), "w") as f:
         body = {
             "input": [tc[0] for tc in test_cases],
             "output": [tc[1] for tc in test_cases],
@@ -159,16 +166,14 @@ def get_all_APPS_filepaths() -> List[str]:
     ]
 
 
-async def main():
+async def main(output_dir):
     async def task(filepath):
-        new_test_cases, success = await generate_test_cases(filepath)
-        if not success:
+        test_cases = await generate_test_cases(filepath, output_dir)
+        if len(test_cases) < MIN_DESIRED_TEST_CASES:
             print(
                 f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
             )
-            print(
-                f"Only {len(new_test_cases)} test cases were generated for {filepath}"
-            )
+            print(f"Only {len(test_cases)} test cases were generated for {filepath}")
 
     filepaths = get_all_APPS_filepaths()
 
@@ -180,4 +185,9 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # take in argument that is destination file path
+    if len(sys.argv) != 2:
+        print("Usage: python3 generate_test_cases.py <output_dir>")
+        exit(1)
+    output_dir = sys.argv[1]
+    asyncio.run(main(output_dir))

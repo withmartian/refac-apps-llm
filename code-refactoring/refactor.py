@@ -1,15 +1,16 @@
 import subprocess
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from tqdm import tqdm
 import asyncio
 import json
 import os
 from collections import defaultdict
 from typing import Callable
 
+from tqdm import tqdm
 from utils import call_gpt
 
 

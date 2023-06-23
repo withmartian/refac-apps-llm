@@ -1,8 +1,8 @@
 from asyncio import sleep
-import openai
 
-from aiolimiter import AsyncLimiter
+import openai
 import tiktoken
+from aiolimiter import AsyncLimiter
 
 TOKEN_LIMIT = 90000 / 3
 
