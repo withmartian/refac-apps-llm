@@ -98,6 +98,9 @@ def get_shared_output(outputs: List[Any]) -> Optional[str]:
             d[repr(output)] = output
     values = [repr(output) for output in outputs if output is not None]
 
+    if not values:
+        return None
+
     # get frequency of each output
     freq = Counter(values)
     most_common_item, most_common_freq = freq.most_common(1)[0]
