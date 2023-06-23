@@ -138,6 +138,11 @@ def get_question(problem_path):
 def clean_up_gpt_turbo(code):
     if "```" in code:
         code = code.split("```")[1]
+    try:
+        new_code = json.loads(code)
+        code = new_code
+    except:
+        pass
     return code
 
 
@@ -217,7 +222,7 @@ async def refactor_code(index, code, problem_path, output_dir):
 
     os.makedirs(os.path.join(output_dir, id), exist_ok=True)
     with open(destination, "w") as f:
-        json.dump(package, f, indent=4)
+        json.dump(package, f)  # , indent=4)
 
 
 async def main(output_dir: str):

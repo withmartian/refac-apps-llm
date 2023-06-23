@@ -27,7 +27,7 @@ Given the following problem description:
 {problem_description}
 ---
 What is the input that you would generate? Only include the input, not the output. Do not include any other text.
-Some example inputs:
+Some example inputs separated by new lines:
 ---
 {inputs}
 ---
