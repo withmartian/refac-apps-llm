@@ -20,7 +20,7 @@ MAX_TRIES = 3
 async def generate_tc_input(problem_description, prior_test_cases) -> Optional[str]:
     # TODO: check if this prompt is good enough
     # get the inputs only
-    inputs = [input for input, output in prior_test_cases]
+    inputs = [repr(input) for input, _ in prior_test_cases]
     prompt = f"""You are a test case input generator.
 Given the following problem description:
 ---
