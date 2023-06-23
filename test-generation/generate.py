@@ -168,6 +168,9 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
         problem_description = get_problem_description(filepath)
     except:
         print("Failed to get problem description.")
+        # dump marker
+        with open(os.path.join(start_path, "marker.txt"), "w") as f:
+            f.write("FAILED TO GET PROBLEM DESCRIPTION")
         return []
     test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
     start_num = len(test_cases)
