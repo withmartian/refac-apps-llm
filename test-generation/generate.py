@@ -123,9 +123,12 @@ def get_curr_test_cases(filepath: str) -> List[Tuple[str, str]]:
     filepath = os.path.join(filepath, "input_output.json")
     if not os.path.exists(filepath):
         return []
-    with open(filepath, "r") as f:
-        data = json.load(f)
-        return list(zip(data["inputs"], data["outputs"]))
+    try:
+        with open(filepath, "r") as f:
+            data = json.load(f)
+            return list(zip(data["inputs"], data["outputs"]))
+    except:
+        return []
 
 
 def get_problem_description(filepath: str) -> str:
