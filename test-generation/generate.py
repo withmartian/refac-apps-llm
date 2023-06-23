@@ -20,7 +20,7 @@ MAX_TRIES = 3
 async def generate_tc_input(problem_description, prior_test_cases) -> Optional[str]:
     # TODO: check if this prompt is good enough
     # get the inputs only
-    inputs = [repr(input) for input, _ in prior_test_cases]
+    inputs = "\n".join(repr(input) for input, _ in prior_test_cases)
     prompt = f"""You are a test case input generator.
 Given the following problem description:
 ---
@@ -29,7 +29,7 @@ Given the following problem description:
 What is the input that you would generate? Only include the input, not the output. Do not include any other text.
 Some example inputs:
 ---
-{', '.join(inputs)}
+{inputs}
 ---
 Make sure to provide an input not in the list above and use proper formatting:
 """
