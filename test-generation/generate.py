@@ -19,14 +19,17 @@ MAX_TRIES = 3
 
 async def generate_tc_input(problem_description, prior_test_cases) -> Optional[str]:
     # TODO: check if this prompt is good enough
+    # get the inputs only
+    inputs = [input for input, output in prior_test_cases]
     prompt = f"""You are a test case input generator.
 Given the following problem description:
-```
+---
 {problem_description}
-```
+---
 What is the input that you would generate? Only include the input, not the output. Do not include any other text.
-Some past test cases are (in JSON list format):
-{json.dumps(prior_test_cases, indent=4)}
+Some example inputs:
+---
+{', '.join(inputs)}
 ---
 Make sure to provide an input not in the list above and use proper formatting:
 """
@@ -49,6 +52,7 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[Any]
     # open original test cases
     with open(os.path.join(filepath, "input_output.json"), "r") as f:
         data = json.load(f)
+        print("data: ", json.dumps(data, indent=4))
 
     # dump the actual test cases
     with open("generate-temp/input_output.json", "w") as f:
