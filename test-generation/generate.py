@@ -155,12 +155,11 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
     """
     id: str = filepath.split("/")[-1]
     start_path = os.path.join(output_dir, id)
-    if os.path.exists(os.path.join(start_path, "inputs_outputs.json")):
+    if os.path.exists(os.path.join(start_path, "marker.txt")):
         print(f"Test cases for {id} already generated.")
         with open(os.path.join(start_path, "inputs_outputs.json"), "r") as f:
             data = json.load(f)
-            if len(data["inputs"]) >= MIN_DESIRED_TEST_CASES:
-                return zip(data["inputs"], data["outputs"])
+            return list(zip(data["inputs"], data["outputs"]))
 
     problem_description = get_problem_description(filepath)
     test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
@@ -205,6 +204,11 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
         }
         print("body: ", body)
         json.dump(body, f, indent=4)
+
+    # dump marker
+    with open(os.path.join(start_path, "marker.txt"), "w") as f:
+        f.write("")
+
     return test_cases
 
 
