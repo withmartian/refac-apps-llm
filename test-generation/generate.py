@@ -187,6 +187,10 @@ async def main(output_dir):
                 f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
             )
             print(f"Only {len(test_cases)} test cases were generated for {filepath}")
+        else:
+            print(
+                f"Successfully accumulated {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
+            )
 
     filepaths = get_all_APPS_filepaths()
 
