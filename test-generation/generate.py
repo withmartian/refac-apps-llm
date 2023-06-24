@@ -162,7 +162,7 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
         try:
             with open(os.path.join(start_path, "inputs_outputs.json"), "r") as f:
                 data = json.load(f)
-                test_cases = list(zip(data["inputs"], data["outputs"]))
+                test_cases = list(zip(data["input"], data["output"]))
         except:
             with open(os.path.join(start_path, "marker.txt"), "w") as f:
                 f.write(f"Struggled to open inputs_outputs.json for {id}.")
