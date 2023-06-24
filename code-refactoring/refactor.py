@@ -215,12 +215,14 @@ async def refactor_code(index, code, problem_path, output_dir):
         json.dump(package, f, indent=4)
 
 
-async def main(output_dir: str):
+async def main(output_dir: str, start: int = 0, end: int = float("inf")):
     training_path = "APPS/train"
     problems = sorted(os.listdir(training_path))
 
-    # TODO: remove this restriction after testing
-    problems = problems[:1]
+    # limit the number of problems to refactor
+    end = min(end, len(problems))
+    problems = problems[start:end]
+
     bar = tqdm(total=len(problems))
 
     async def task(problem):
@@ -249,8 +251,9 @@ if __name__ == "__main__":
         print("Usage: python3 refactor.py <output_dir>")
         exit(1)
     output_dir = sys.argv[1]
-    asyncio.run(main(output_dir))
-
+    start = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    end = int(sys.argv[3]) if len(sys.argv) > 3 else float("inf")
+    asyncio.run(main(output_dir, start, end))
 
 # example_scripts = [
 #     """
