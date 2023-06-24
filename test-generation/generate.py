@@ -47,8 +47,11 @@ def get_outputs(solutions: List[str], tc_input: str, filepath: str) -> List[Any]
         json.dump([""], f)
 
     # open original test cases
-    with open(os.path.join(filepath, "input_output.json"), "r") as f:
-        data = json.load(f)
+    try:
+        with open(os.path.join(filepath, "input_output.json"), "r") as f:
+            data = json.load(f)
+    except:
+        data = {}
 
     # dump the actual test cases
     with open("generate-temp/input_output.json", "w") as f:
