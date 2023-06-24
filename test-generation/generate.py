@@ -13,7 +13,7 @@ from typing import Any, List, Optional, Tuple
 
 from utils import call_gpt
 
-MIN_DESIRED_TEST_CASES = 10
+MIN_DESIRED_TEST_CASES = 25
 MAX_TRIES = 3
 
 
@@ -159,15 +159,18 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
     id: str = filepath.split("/")[-1]
     start_path = os.path.join(output_dir, id)
     if os.path.exists(os.path.join(start_path, "marker.txt")):
-        print(f"Test cases for {id} already generated.")
         try:
             with open(os.path.join(start_path, "inputs_outputs.json"), "r") as f:
                 data = json.load(f)
-                return list(zip(data["inputs"], data["outputs"]))
+                test_cases = list(zip(data["inputs"], data["outputs"]))
         except:
             with open(os.path.join(start_path, "marker.txt"), "w") as f:
-                f.write("struggled to open inputs_outputs.json")
+                f.write(f"Struggled to open inputs_outputs.json for {id}.")
             return []
+
+    if len(test_cases) >= MIN_DESIRED_TEST_CASES:
+        print(f"Test cases for {id} already generated.")
+        return test_cases
 
     try:
         problem_description = get_problem_description(filepath)
@@ -178,7 +181,7 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
         with open(os.path.join(start_path, "marker.txt"), "w") as f:
             f.write("FAILED TO GET PROBLEM DESCRIPTION")
         return []
-    test_cases: List[Tuple[str, str]] = get_curr_test_cases(filepath)
+    test_cases: List[Tuple[str, str]] = test_cases or get_curr_test_cases(filepath)
     start_num = len(test_cases)
 
     print("prior test cases: ", test_cases)
@@ -251,7 +254,8 @@ async def main(output_dir, start=0, end=float("inf")):
                 f"Successfully accumulated {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
             )
 
-    filepaths = get_all_APPS_filepaths()
+    with open("test-generation/filepaths.json", "r") as f:
+        filepaths = json.load(f)
     end = min(end, len(filepaths))
 
     # limit to a subset of the filepaths
