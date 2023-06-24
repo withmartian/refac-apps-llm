@@ -1,6 +1,6 @@
-from collections import Counter
 import subprocess
 import sys
+from collections import Counter
 
 from dotenv import load_dotenv
 

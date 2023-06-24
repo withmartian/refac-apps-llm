@@ -1,4 +1,3 @@
-from ctypes import Union
 import subprocess
 import sys
 
@@ -9,13 +8,11 @@ load_dotenv()
 import asyncio
 import json
 import os
-from collections import defaultdict
 from typing import Any, Callable, Dict, List
 
+import numpy as np
 from tqdm import tqdm
 from utils import call_gpt
-
-import numpy as np
 
 
 def question_to_prompt(question: str) -> Callable[[str, str], str]:
@@ -148,9 +145,7 @@ def clean_up_gpt_turbo(code):
     return code
 
 
-async def refactor(
-    problem_path, get_prompt, code, max_tries=4
-) -> List[Dict[str, Union[str, List[str], bool]]]:
+async def refactor(problem_path, get_prompt, code, max_tries=4) -> List[Dict[str, Any]]:
     """
     return format should be a list of individual checkpoints
 
