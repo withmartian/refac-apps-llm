@@ -1,3 +1,4 @@
+from ctypes import Union
 import subprocess
 import sys
 
@@ -147,7 +148,9 @@ def clean_up_gpt_turbo(code):
     return code
 
 
-async def refactor(problem_path, get_prompt, code, max_tries=4) -> List[Dict[Any]]:
+async def refactor(
+    problem_path, get_prompt, code, max_tries=4
+) -> List[Dict[str, Union[str, List[str], bool]]]:
     """
     return format should be a list of individual checkpoints
 
