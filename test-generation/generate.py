@@ -142,7 +142,8 @@ def get_problem_description(filepath: str) -> str:
 
 def try_parse_json(s: str) -> Any:
     try:
-        return json.loads(s)
+        o = json.loads(s)
+        return o
     except:
         return s
 
