@@ -1,4 +1,6 @@
 from asyncio import sleep
+from collections import defaultdict
+from typing import List
 
 import openai
 import tiktoken
@@ -45,3 +47,53 @@ async def call_gpt(prompt: str) -> str:
             print(f"GPT Error: {e}")
             await sleep(10)
     return None, False
+
+
+def sort_python_code(code: List[str]) -> List[str]:
+    """
+    Sorts the methods such that a method is always called before it is defined.
+    """
+    lines = code.split("\n")
+    methods: List[List[str]] = [[]]
+    for line in lines:
+        if len(line) > 0 and line[0] not in [" ", "\t"]:
+            if line.startswith("def"):
+                methods.append([line])
+            else:
+                methods[0].append(line)
+        else:
+            methods[-1].append(line)
+
+    res = topo_sort(methods[1:]) + [methods[0]]
+    return "\n".join("\n".join(method) for method in res)
+
+
+def topo_sort(methods: List[List[str]]) -> List[List[str]]:
+    """
+    Sorts the methods such that a method is always called before it is defined.
+    """
+    edges = defaultdict(list)
+    names = [method[0].split(" ")[1].split("(")[0] for method in methods]
+    for i, name in enumerate(names):
+        for j, method in enumerate(methods):
+            if i == j:
+                continue
+
+            if any(name in line for line in method):
+                edges[i].append(j)
+
+    res = []
+    visited = set()
+
+    def dfs(node):
+        if node in visited:
+            return
+        visited.add(node)
+        for child in edges[node]:
+            dfs(child)
+        res.append(node)
+
+    for i in range(len(methods)):
+        dfs(i)
+
+    return [methods[i] for i in res]

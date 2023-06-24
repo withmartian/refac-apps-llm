@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List
 
 import numpy as np
 from tqdm import tqdm
-from utils import call_gpt
+from utils import call_gpt, sort_python_code
 
 
 def question_to_prompt(question: str) -> Callable[[str, str], str]:
@@ -45,59 +45,6 @@ REFACTORING_PIPELINE = [
     ("Simplify Prompt", SIMPLIFY_PROMPT),
     ("Comprehensions Prompt", COMPREHENSIONS_PROMPT),
 ]
-
-
-# def reorganize_methods(code):
-#     pattern = r"^def\s*\w*\(.*"
-#     splitted = re.split(pattern, code)
-#     functions = re.findall(pattern, code)
-#     res = splitted[0]
-#     splitted = splitted[1:]
-
-#     assert len(splitted) == len(functions)
-
-#     for i in range(len(splitted)):
-#         # count space in beginning of next line
-#         num_spaces = len(splitted[i]) - len(splitted[i].lstrip())
-#         # remove spaces from each one of the lines
-#         splitted[i] = "\n".join([s[num_spaces:] for s in splitted[i].split("\n")])
-#         splitted[i] = reorganize_methods(splitted[i])
-#         # add spaces back
-#         splitted[i] = "\n".join([" " * num_spaces + s for s in splitted[i].split("\n")])
-
-#     # topo sort based on function calls
-#     edges = defaultdict(list)
-#     print(functions)
-#     print(edges)
-
-#     name_regex = r"def\s+(\w+)\s*\("
-#     function_names = [re.findall(name_regex, f)[0] for f in functions]
-#     for i in range(len(functions)):
-#         for j in range(i + 1, len(functions)):
-#             if function_names[i] + "(" in splitted[j]:
-#                 edges[i].append(j)
-#             if function_names[j] + "(" in splitted[i]:
-#                 edges[j].append(i)
-
-#     # toposort the edges
-#     visited = set()
-#     order = []
-
-#     def dfs(node):
-#         if node in visited:
-#             return
-#         visited.add(node)
-#         for child in edges[node]:
-#             dfs(child)
-#         order.append(node)
-
-#     for node in functions:
-#         dfs(node)
-
-#     for i in reversed(order):
-#         res += functions[i] + splitted[i]
-
-#     return res
 
 
 def validate(code, problem_path) -> bool:
@@ -173,6 +120,16 @@ async def refactor(problem_path, get_prompt, code, max_tries=4) -> List[Dict[str
             )
             checkpoint["success"] = False
         checkpoints.append(checkpoint)
+
+    # toposort the code
+    new_code = sort_python_code(code)
+    checkpoints.append(
+        {
+            "name": "Toposort",
+            "history": [code, new_code],
+            "success": validate(new_code, problem_path),
+        }
+    )
     return checkpoints
 
 
@@ -252,104 +209,3 @@ if __name__ == "__main__":
     start = int(sys.argv[2]) if len(sys.argv) > 2 else 0
     end = int(sys.argv[3]) if len(sys.argv) > 3 else float("inf")
     asyncio.run(main(output_dir, start, end))
-
-# example_scripts = [
-#     """
-# def is_prime(number):
-#     if number < 2:
-#         return False
-#     for i in range(2, number):
-#         if number % i == 0:
-#             return False
-#     return True
-
-# def print_prime_numbers(n):
-#     primes = [p for p in range(2, n + 1) if is_prime(p)]
-#     print(primes)
-
-# print_prime_numbers(50)
-# """,
-#     """
-# def fibonacci_recursive(n):
-#     if n == 0 or n == 1:
-#         return n
-#     return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
-
-# def print_fibonacci_recursive(n):
-#     print(f"The {n}th Fibonacci number is {fibonacci_recursive(n)}")
-
-# print_fibonacci_recursive(10)
-# """,
-#     """
-
-# from random import randint
-
-# def generate_random_list(size):
-#     result = [randint(1, 100) for _ in range(size)]
-#     return result
-
-# def random_sum(size):
-#     numbers = generate_random_list(size)
-#     return sum(numbers)
-
-# print(random_sum(10))
-# """,
-#     """
-# def reverse_string(s):
-#     return s[::-1]
-
-# def reverse_and_print(s):
-#     print(reverse_string(s))
-
-# reverse_and_print("Example string")
-# """,
-#     """
-# def greet(name):
-#     return "Hello, " + name + "!"
-
-# def greet_and_print(name):
-#     print(greet(name))
-
-# greet_and_print("John")
-# """,
-#     """
-# def main_function():
-#     def helper_function():
-#         print("This is the helper function")
-
-#     helper_function()
-#     print("This is the main function")
-
-# main_function()
-# """,
-#     """
-# def recursive_function(n):
-#     if n > 0:
-#         print(n)
-#         recursive_function(n-1)
-
-# recursive_function(5)
-# """,
-#     """
-# def outer_function():
-#     print("This is the outer function")
-
-#     def inner_function_1():
-#         print("This is the inner function 1")
-
-#     def inner_function_2():
-#         inner_function_1()
-#         print("This is the inner function 2")
-
-#     inner_function_2()
-
-# outer_function()
-# """,
-# ]
-
-# for script in example_scripts:
-#     print(script)
-#     input()
-#     print(reorganize_methods(script))
-#     print()
-#     input()
