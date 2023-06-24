@@ -192,12 +192,9 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
                 continue
 
             print("tc_input: ", tc_input)
-            print("CHECKPOINT 0")
             tc_input = try_parse_json(tc_input)
-            print("CHECKPOINT 1")
 
             tc_output = generate_tc_output(tc_input, filepath)
-            print("CHECKPOINT 2")
             if tc_output is None:
                 # NOTE: likely won't be uncommon
                 continue
@@ -213,7 +210,6 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
             print(f"Failed to generate enough valid test cases for {filepath}.")
             print(f"Started with {start_num} test cases.")
             break
-    print("CHECKPOINT 3")
 
     # dump the current test cases
     os.makedirs(start_path, exist_ok=True)
