@@ -245,7 +245,7 @@ async def main(output_dir: str, start: int = 0, end: int = float("inf")):
 
 if __name__ == "__main__":
     # take in argument that is destination file path
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print("Usage: python3 refactor.py <output_dir>")
         exit(1)
     output_dir = sys.argv[1]
