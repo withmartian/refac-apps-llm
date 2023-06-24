@@ -142,8 +142,7 @@ def get_problem_description(filepath: str) -> str:
 
 def try_parse_json(s: str) -> Any:
     try:
-        o = json.loads(s)
-        return o
+        return json.loads(s)
     except:
         return s
 
@@ -240,21 +239,16 @@ def get_all_APPS_filepaths() -> List[str]:
 
 async def main(output_dir, start=0, end=float("inf")):
     async def task(filepath):
-        try:
-            test_cases = await generate_test_cases(filepath, output_dir)
-            if len(test_cases) < MIN_DESIRED_TEST_CASES:
-                print(
-                    f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
-                )
-                print(
-                    f"Only {len(test_cases)} test cases were generated for {filepath}"
-                )
-            else:
-                print(
-                    f"Successfully accumulated {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
-                )
-        except:
-            pass
+        test_cases = await generate_test_cases(filepath, output_dir)
+        if len(test_cases) < MIN_DESIRED_TEST_CASES:
+            print(
+                f"Failed to accumulate {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
+            )
+            print(f"Only {len(test_cases)} test cases were generated for {filepath}")
+        else:
+            print(
+                f"Successfully accumulated {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
+            )
 
     filepaths = get_all_APPS_filepaths()
     end = min(end, len(filepaths))
