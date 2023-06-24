@@ -254,7 +254,10 @@ async def main(output_dir, start=0, end=float("inf")):
                 f"Successfully accumulated {MIN_DESIRED_TEST_CASES} test cases for {filepath}"
             )
 
-    with open("test-generation/filepaths.json", "r") as f:
+    # get path to current file
+    location = os.path.dirname(os.path.realpath(__file__))
+    location = os.path.join(location, "filepaths.json")
+    with open(location, "r") as f:
         filepaths = json.load(f)
     end = min(end, len(filepaths))
 
