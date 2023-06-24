@@ -42,6 +42,6 @@ async def call_gpt(prompt: str) -> str:
             )
             return completion.choices[0].message["content"], True
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"GPT Error: {e}")
             await sleep(10)
     return None, False

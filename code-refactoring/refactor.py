@@ -9,7 +9,7 @@ import asyncio
 import json
 import os
 from collections import defaultdict
-from typing import Callable
+from typing import Any, Callable, Dict, List
 
 from tqdm import tqdm
 from utils import call_gpt
@@ -138,6 +138,8 @@ def get_question(problem_path):
 def clean_up_gpt_turbo(code):
     if "```" in code:
         code = code.split("```")[1]
+    if code.startswith("python"):
+        code = code[6:]
     try:
         code = json.loads(code)
     except:
@@ -145,39 +147,34 @@ def clean_up_gpt_turbo(code):
     return code
 
 
-async def refactor(problem_path, get_prompt, working_code, max_tries=4):
-    checkpoints = defaultdict(list)
-    step = 0
+async def refactor(problem_path, get_prompt, code, max_tries=4) -> List[Dict[Any]]:
+    """
+    return format should be a list of individual checkpoints
+
+    """
+    checkpoints = []
     for name, prompt in REFACTORING_PIPELINE:
-        prompt = get_prompt(prompt, working_code)
-        starting_code = working_code
-        new_code_history = []
+        checkpoint = {"name": name, "history": [code]}
+        prompt = get_prompt(prompt, code)
 
         for _ in range(max_tries):
             new_code, success = await call_gpt(prompt)
             if not success:
-                return {}
+                return []
+
             new_code = clean_up_gpt_turbo(new_code)
-            new_code_history.append(new_code)
+            checkpoint["history"].append(new_code)
 
             if validate(new_code, problem_path):
-                working_code = new_code
+                code = new_code
+                checkpoint["success"] = True
                 break
         else:
             print(
                 f"Failed to generate valid code for {name} within {max_tries} tries. Skipping the refactoring task."
             )
-
-        checkpoints[name].append(
-            {
-                "prompt": prompt,
-                "old_code": starting_code,
-                "new_code": new_code_history,
-                "step": step,
-                "success": working_code == new_code,
-            }
-        )
-        step += 1
+            checkpoint["success"] = False
+        checkpoints.append(checkpoint)
     return checkpoints
 
 
@@ -199,29 +196,23 @@ async def refactor_code(index, code, problem_path, output_dir):
     if os.path.exists(destination):
         return
 
-    # try it first
+    package = {"start_code": code}
+
+    # check if the original code is valid
     if not validate(code, problem_path):
-        package = {
-            "original_worked": False,
-            "gpt-failure": False,
-            "refactoring_steps": [],
-        }
-    elif not (checkpoints := await refactor(problem_path, get_prompt, code)):
-        package = {
-            "original_worked": True,
-            "gpt-failure": True,
-            "refactoring_steps": [],
-        }
+        package.update({"end_reason": "original-invalid", "refactoring_steps": []})
     else:
-        package = {
-            "original_worked": True,
-            "gpt-failure": False,
-            "refactoring_steps": checkpoints,
-        }
+        checkpoints = await refactor(problem_path, get_prompt, code)
+        package.update(
+            {
+                "end_reason": "success" if checkpoints else "failed",
+                "checkpoints": checkpoints,
+            }
+        )
 
     os.makedirs(os.path.join(output_dir, id), exist_ok=True)
     with open(destination, "w") as f:
-        json.dump(package, f)  # , indent=4)
+        json.dump(package, f, indent=4)
 
 
 async def main(output_dir: str):
@@ -240,7 +231,7 @@ async def main(output_dir: str):
         with open(os.path.join(problem_path, "solutions.json"), "r") as f:
             solutions = json.load(f)
 
-        for i, code in enumerate(solutions):
+        for i, code in enumerate(solutions[:1]):
             await refactor_code(i, code, problem_path, output_dir)
         bar.update(1)
         # display bar

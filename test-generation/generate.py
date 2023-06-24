@@ -165,7 +165,9 @@ async def generate_test_cases(filepath, output_dir) -> List[str]:
                 data = json.load(f)
                 return list(zip(data["inputs"], data["outputs"]))
         except:
-            pass
+            with open(os.path.join(start_path, "marker.txt"), "w") as f:
+                f.write("struggled to open inputs_outputs.json")
+            return []
 
     try:
         problem_description = get_problem_description(filepath)
