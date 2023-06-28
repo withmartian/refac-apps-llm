@@ -1,6 +1,6 @@
 from asyncio import sleep
 from collections import defaultdict
-from typing import List
+from typing import Dict, List, Optional
 
 import openai
 import tiktoken
@@ -47,6 +47,25 @@ async def call_gpt(prompt: str) -> str:
             print(f"GPT Error: {e}")
             await sleep(10)
     return None, False
+
+
+async def call_gpt_directly(messages: List[Dict[str, str]]) -> Optional[Dict[str, str]]:
+    tokens = len(enc.encode("".join([message["content"] for message in messages])))
+    if tokens > TOKEN_LIMIT:
+        print("Skipping prompt due to token limit.")
+        return None
+
+    await chat_token_limiter_gpt35.acquire(tokens)
+    await chat_rate_limiter_gpt35.acquire()
+    try:
+        completion = await openai.ChatCompletion.acreate(
+            model="gpt-3.5-turbo",
+            messages=messages,
+        )
+        return completion.choices[0]
+    except Exception as e:
+        print(f"GPT Error: {e}")
+    return None
 
 
 def sort_python_code(code: List[str]) -> List[str]:
