@@ -177,11 +177,99 @@ async def refactor_code(path, code, problem_path) -> Dict[str, str]:
     return {"end_reason": "success", "code": final_refactored_code}
 
 
-async def get_best_refactoring(refactorings: List[str], problem_path: str) -> str:
-    refactorings = []
-    # TODO:
-    # sort refactorings
-    return refactorings[0]
+def is_latter_better(comparison):
+    # TODO: actually implement this
+    print(f"Comparison: {comparison}")
+    return True
+
+
+def get_existing_history(problem_path):
+    history_path = os.path.join(problem_path, "history.json")
+    if os.path.exists(history_path):
+        with open(history_path, "r") as f:
+            try:
+                return json.load(f)
+            except:
+                print("Failed to load history for problem", problem_path)
+                pass
+    return []
+
+
+def get_historical_best(history):
+    if len(history) > 0:
+        return (
+            history[-1]["attacker"]
+            if history[-1]["attacker_wins"]
+            else history[-1]["defender"]
+        )
+    return None
+
+
+async def get_best_refactoring(
+    original_code, problem_description, refactors: List[str], problem_path: str
+) -> str:
+    history = get_existing_history(problem_path)
+    assert len(history) == 0 or history[0]["defender"] == original_code
+
+    # skip refactors that have already been tried
+    rem_refactors = [
+        refactor
+        for refactor in refactors
+        if refactor not in [x["attacker"] for x in history]
+    ]
+
+    best_refactor = get_historical_best(history) or original_code
+    for new_refactor in rem_refactors:
+        comparison = await get_refactored_code_comparison(
+            original_code, best_refactor, new_refactor, problem_description
+        )
+        history.append(
+            {
+                "defender": best_refactor,
+                "attacker": new_refactor,
+                "fight": comparison,
+                "attacker_wins": is_latter_better(comparison),
+            }
+        )
+        if history[-1]["attacker_wins"]:
+            best_refactor = new_refactor
+
+        # cache history
+        with open(os.path.join(problem_path, "history.json"), "w") as f:
+            json.dump(history, f, indent=4)
+    return best_refactor
+
+
+def get_existing_history_v2(problem_path):
+    history_path = os.path.join(problem_path, "history2.json")
+    if os.path.exists(history_path):
+        with open(history_path, "r") as f:
+            try:
+                return json.load(f)
+            except:
+                print("Failed to load history for problem", problem_path)
+                pass
+    return []
+
+
+async def get_best_refactoring_v2(
+    original_code, problem_description, refactors: List[str], problem_path: str
+) -> str:
+    history = get_existing_history_v2(problem_path)
+    rem_refactors = [
+        refactor for refactor in refactors if refactor not in history["fighters"]
+    ]
+    best_refactor = history.get("winner") or original_code
+
+    # get prompt for best refactoring among all
+    best_refactor = ...
+    # update
+    history["fighters"] += rem_refactors
+    history["winner"] = best_refactor
+
+    with open(os.path.join(problem_path, "history2.json"), "w") as f:
+        json.dump(history, f, indent=4)
+    return history["winner"]
 
 
 async def generate_refactorings(
@@ -206,6 +294,11 @@ async def generate_refactorings(
 
         # get the best refactoring
         best_refactoring = get_best_refactoring(successful_refactoring, problem_path)
+        print("best refactoring", best_refactoring)
+        best_refactoring2 = get_best_refactoring_v2(
+            successful_refactoring, problem_path
+        )
+        print("best refactoring2", best_refactoring2)
 
     async def tasks(problem):
         problem_path = os.path.join(training_path, problem)
