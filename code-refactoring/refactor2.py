@@ -43,7 +43,7 @@ def validate(code, problem_path) -> bool:
         return False
 
 
-def get_question(problem_path):
+def get_problem_question(problem_path):
     with open(os.path.join(problem_path, "question.txt"), "r") as f:
         problem_question = f.read()
     return problem_question
@@ -110,21 +110,21 @@ async def get_final_refactored_code(prev_messages):
 
 
 async def get_refactored_code_comparison(
-    original_code, first_code, second_code, problem_description
+    original_code, codes: List[str], problem_description
 ):
-    prompt = f"""I had two engineers refactor some code. Here's the original code
+    def get_refactor(i, code):
+        return f"Refactoring {i+1}:\n{code}\n"
+
+    n = len(codes)
+    prompt = f"""I had {n} engineers refactor some code. Here's the original code:
 {original_code}
 
-Here's a description of the problem the code is intended to solve
+Here's a description of the problem the code is intended to solve:
 {problem_description} 
 
-Refactoring 1:
-{first_code}
+{''.join(get_refactor(i, code) for i, code in enumerate(codes))}
+I want you to evaluate the refactoring from the {n} engineers. List the pros and cons of each refactoring, then state which refactoring is easier to understand and maintain. When stating which is better, at the very end, output a number from 1 to {n} for the refactoring you think is better."""
 
-Refactoring 2:
-{second_code}
-
-I want you to evaluate the refactoring from the two engineers. List the pros and cons of each refactoring, then state which refactoring is easier to understand and maintain."""
     messages = [
         {
             "content": prompt,
@@ -134,19 +134,11 @@ I want you to evaluate the refactoring from the two engineers. List the pros and
     return await call_gpt_directly(messages)
 
 
-async def refactor_code(path, code, problem_path) -> Dict[str, str]:
-    """
-    Get refactored code for the given problem.
-
-    :param code: The code to refactor.
-    :param problem_path: The path to the problem.
-    :param max_tries: The maximum number of invalid refactored code to generate before raising an exception. Defaults to 4.
-    """
-    problem_question = get_question(problem_path)
+async def refactor_code(path, code, problem_question) -> Dict[str, str]:
     get_path = lambda x: os.path.join(path, x)
     os.makedirs(get_path(""), exist_ok=True)
 
-    if not validate(code, problem_path):
+    if not validate(code, problem_question):
         return {"end_reason": "original-invalid"}
 
     code_smells = await cache_wrapper(
@@ -177,12 +169,6 @@ async def refactor_code(path, code, problem_path) -> Dict[str, str]:
     return {"end_reason": "success", "code": final_refactored_code}
 
 
-def is_latter_better(comparison):
-    # TODO: actually implement this
-    print(f"Comparison: {comparison}")
-    return True
-
-
 def get_existing_history(problem_path):
     history_path = os.path.join(problem_path, "history.json")
     if os.path.exists(history_path):
@@ -205,7 +191,7 @@ def get_historical_best(history):
     return None
 
 
-async def get_best_refactoring(
+async def get_best_refactor(
     original_code, problem_description, refactors: List[str], problem_path: str
 ) -> str:
     history = get_existing_history(problem_path)
@@ -221,14 +207,14 @@ async def get_best_refactoring(
     best_refactor = get_historical_best(history) or original_code
     for new_refactor in rem_refactors:
         comparison = await get_refactored_code_comparison(
-            original_code, best_refactor, new_refactor, problem_description
+            original_code, [best_refactor, new_refactor], problem_description
         )
         history.append(
             {
                 "defender": best_refactor,
                 "attacker": new_refactor,
                 "fight": comparison,
-                "attacker_wins": is_latter_better(comparison),
+                "attacker_wins": comparison[-1] == "2",
             }
         )
         if history[-1]["attacker_wins"]:
@@ -249,26 +235,40 @@ def get_existing_history_v2(problem_path):
             except:
                 print("Failed to load history for problem", problem_path)
                 pass
-    return []
+    return {
+        "fighters": [],
+        "winner": None,
+    }
 
 
-async def get_best_refactoring_v2(
+async def get_best_refactor_v2(
     original_code, problem_description, refactors: List[str], problem_path: str
 ) -> str:
     history = get_existing_history_v2(problem_path)
+    assert len(history["fighters"]) == 0 or original_code in history["fighters"]
+
     rem_refactors = [
         refactor for refactor in refactors if refactor not in history["fighters"]
     ]
-    best_refactor = history.get("winner") or original_code
+    best_refactor = history["winner"] or original_code
+
+    if len(rem_refactors) == 0:
+        return best_refactor
 
     # get prompt for best refactoring among all
-    best_refactor = ...
-    # update
+    best_refactor = await get_refactored_code_comparison(
+        best_refactor, [best_refactor] + rem_refactors, problem_description
+    )
+    best_refactor_id = int(best_refactor[-1])
+
     history["fighters"] += rem_refactors
-    history["winner"] = best_refactor
+    history["winner"] = (
+        rem_refactors[best_refactor_id - 2] if best_refactor_id > 1 else best_refactor
+    )
 
     with open(os.path.join(problem_path, "history2.json"), "w") as f:
         json.dump(history, f, indent=4)
+
     return history["winner"]
 
 
@@ -278,27 +278,28 @@ async def generate_refactorings(
     bar = tqdm(total=len(problems) * attempts)
 
     async def task(output_path, solution, problem_path):
-        res = []
+        problem_question = await get_problem_question(problem_path)
+        mini_tasks = []
         for i in range(attempts):
-            path = os.path.join(output_path, str(i))
-            refactoring_res = await refactor_code(path, solution, problem_path)
-            res.append(refactoring_res)
-            bar.update(1)
+            path = os.path.join(output_path, f"attempt-{i}")
+            refactoring_res = refactor_code(path, solution, problem_question)
+            mini_tasks.append(refactoring_res)
+        results = asyncio.gather(*mini_tasks)
+        bar.update(attempts)
 
-        with open(os.path.join(output_path, "results.json"), "w") as f:
-            json.dump(res, f, indent=4)
-
-        successful_refactoring = [
-            r["code"] for r in res if r["end_reason"] == "success"
+        successful_refactors = [
+            result["code"] for result in results if result["end_reason"] == "success"
         ]
 
         # get the best refactoring
-        best_refactoring = get_best_refactoring(successful_refactoring, problem_path)
-        print("best refactoring", best_refactoring)
-        best_refactoring2 = get_best_refactoring_v2(
-            successful_refactoring, problem_path
+        best_refactor = get_best_refactor(
+            solution, problem_question, successful_refactors, problem_path
         )
-        print("best refactoring2", best_refactoring2)
+        print("best refactoring:\n", best_refactor)
+        best_refactoring2 = get_best_refactor_v2(
+            solution, problem_question, successful_refactors, problem_path
+        )
+        print("best refactoring2:\n", best_refactoring2)
 
     async def tasks(problem):
         problem_path = os.path.join(training_path, problem)
@@ -311,7 +312,7 @@ async def generate_refactorings(
         id = problem.split("/")[-1]
         res = []
         for i, solution in enumerate(solutions[:solution_limit]):
-            path = os.path.join(output_dir, id, str(i))
+            path = os.path.join(output_dir, id, f"solution-{i}")
             os.makedirs(path, exist_ok=True)
             res.append(task(path, solution, problem_path))
 
@@ -325,13 +326,14 @@ async def generate_refactorings(
 
 async def main(
     output_dir: str,
-    start: int = 0,
-    end: int = float("inf"),
-    attempts: int = 1,
-    solution_limit: int = 1,
+    training_path: str,
+    start: int,
+    end: int,
+    attempts: int,
+    solution_limit: int,
 ):
-    training_path = "APPS/train"
     problems = sorted(os.listdir(training_path))
+    start = max(start, 0)
     end = min(end, len(problems))
     problems = problems[start:end]
     await generate_refactorings(
@@ -365,22 +367,20 @@ def parse_args():
         help="The number of attempts to make for each problem.",
     )
     parser.add_argument(
-        "--solution_limit",
+        "--solution-limit",
         type=int,
         default=1,
         help="The number of solutions to refactor for each problem.",
+    )
+    parser.add_argument(
+        "--training-path",
+        type=str,
+        default="APPS/train",
+        help="The path to the training problems.",
     )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    asyncio.run(
-        main(
-            args.output_dir,
-            start=args.start,
-            end=args.end,
-            attempts=args.attempts,
-            solution_limit=args.solution_limit,
-        )
-    )
+    asyncio.run(main(**vars(args)))
