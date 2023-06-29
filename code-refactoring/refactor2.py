@@ -259,21 +259,18 @@ async def get_best_refactor_v2(
         return best_refactor
 
     # get prompt for best refactoring among all
+    fighters = [best_refactor] + rem_refactors
     comparison = await get_refactored_code_comparison(
-        best_refactor, [best_refactor] + rem_refactors, problem_description
+        original_code, fighters, problem_description
     )
     comparison_winner = get_comparison_winner(comparison)
     if comparison_winner is None:
         return None
 
-    history["comparisons"].append(
-        {"fighters": [best_refactor] + rem_refactors, "comparison": comparison}
-    )
+    history["comparisons"].append({"fighters": fighters, "comparison": comparison})
     history["original"] = original_code
     history["fighters"] += rem_refactors
-    history["winner"] = (
-        rem_refactors[comparison_winner - 2] if comparison_winner > 1 else best_refactor
-    )
+    history["winner"] = rem_refactors[comparison_winner - 1]
 
     with open(os.path.join(save_path, "history2.json"), "w") as f:
         json.dump(history, f, indent=4)
@@ -356,6 +353,7 @@ async def main(
     start = max(start, 0)
     end = min(end, len(problems))
     problems = problems[start:end]
+    comparers = [COMPARERS[i] for i in comparers]
     await generate_refactorings(
         problems, training_path, output_dir, attempts, solution_limit, comparers
     )
