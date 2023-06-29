@@ -248,6 +248,7 @@ def get_existing_history_v2(save_path):
                 print("Failed to load history for problem", save_path)
                 pass
     return {
+        "original": None,
         "fighters": [],
         "winner": None,
     }
@@ -260,8 +261,6 @@ async def get_best_refactor_v2(
     save_path: str,
 ) -> str:
     history = get_existing_history_v2(save_path)
-    assert len(history["fighters"]) == 0 or original_code in history["fighters"]
-
     rem_refactors = [
         refactor for refactor in refactors if refactor not in history["fighters"]
     ]
@@ -279,6 +278,7 @@ async def get_best_refactor_v2(
         comparison_content = comparison_content[:-1]
     best_refactor_id = int(comparison_content[-1])
 
+    history["original"] = original_code
     history["fighters"] += rem_refactors
     history["winner"] = (
         rem_refactors[best_refactor_id - 2] if best_refactor_id > 1 else best_refactor
