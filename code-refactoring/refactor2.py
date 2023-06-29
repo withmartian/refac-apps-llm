@@ -167,10 +167,9 @@ async def refactor_code(path, code, problem_question, problem_path) -> Dict[str,
     if final_refactored_code is None:
         return {"end_reason": "final refactored code prompt failed"}
 
-    # TODO: validate code properly
     final_refactored_code = final_refactored_code["content"]
-    # if not validate(final_refactored_code, problem_path):
-    #     return {"end_reason": "final refactored code invalid"}
+    if not validate(final_refactored_code, problem_path):
+        return {"end_reason": "final refactored code invalid"}
 
     return {"end_reason": "success", "code": final_refactored_code}
 
@@ -314,7 +313,7 @@ async def generate_refactorings(
         # get existing best refactorings
         best_refactors = None
         if os.path.exists(os.path.join(output_path, "best_refactors.json")):
-            with open(os.path.join(problem_path, "best_refactors.json"), "r") as f:
+            with open(os.path.join(output_path, "best_refactors.json"), "r") as f:
                 best_refactors = json.load(f)
 
         if best_refactors is not None and set(best_refactors["refactors"]) == set(
@@ -327,16 +326,11 @@ async def generate_refactorings(
             solution, problem_question, successful_refactors, output_path
         )
         print("best refactoring:\n", best_refactor)
-        # check if the best refactoring is valid
-        if validate(best_refactor, problem_path):
-            print("best refactoring is valid")
 
         best_refactor2 = await get_best_refactor_v2(
             solution, problem_question, successful_refactors, output_path
         )
         print("best refactoring2:\n", best_refactor2)
-        if validate(best_refactor2, problem_path):
-            print("best refactoring2 is valid")
 
         data = {
             "refactors": successful_refactors,
@@ -345,7 +339,7 @@ async def generate_refactorings(
                 "v2": best_refactor2,
             },
         }
-        with open(os.path.join(problem_path, "best_refactors.json"), "w") as f:
+        with open(os.path.join(output_path, "best_refactors.json"), "w") as f:
             json.dump(data, f, indent=4)
         return data["best"]
 
