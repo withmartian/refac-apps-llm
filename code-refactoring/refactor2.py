@@ -215,12 +215,13 @@ async def get_best_refactor(
         comparison = await get_refactored_code_comparison(
             original_code, [best_refactor, new_refactor], problem_description
         )
+        comparison_content = comparison["content"]
         history.append(
             {
                 "defender": best_refactor,
                 "attacker": new_refactor,
-                "fight": comparison,
-                "attacker_wins": comparison[-1] == "2",
+                "fight": comparison_content,
+                "attacker_wins": comparison_content[-1] == "2",
             }
         )
         if history[-1]["attacker_wins"]:
@@ -262,10 +263,11 @@ async def get_best_refactor_v2(
         return best_refactor
 
     # get prompt for best refactoring among all
-    best_refactor = await get_refactored_code_comparison(
+    comparison = await get_refactored_code_comparison(
         best_refactor, [best_refactor] + rem_refactors, problem_description
     )
-    best_refactor_id = int(best_refactor[-1])
+    comparison_content = comparison["content"]
+    best_refactor_id = int(comparison_content[-1])
 
     history["fighters"] += rem_refactors
     history["winner"] = (

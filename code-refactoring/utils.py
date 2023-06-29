@@ -62,7 +62,6 @@ async def call_gpt_directly(messages: List[Dict[str, str]]) -> Optional[Dict[str
             model="gpt-3.5-turbo",
             messages=messages,
         )
-        print(type(completion.choices[0].message))
         return completion.choices[0].message
     except Exception as e:
         print(f"GPT Error: {e}")
