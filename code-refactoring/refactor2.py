@@ -18,6 +18,8 @@ from utils import call_gpt_directly, call_gpt
 
 def validate(code, problem_path) -> bool:
     os.makedirs("refactor-temp", exist_ok=True)
+    if os.path.exists("refactor-temp/all_results.json"):
+        os.remove("refactor-temp/all_results.json")
     with open("refactor-temp/all_codes.json", "w") as f:
         json.dump({"0": [code]}, f)
     with open("refactor-temp/filepaths.json", "w") as f:
@@ -39,6 +41,7 @@ def validate(code, problem_path) -> bool:
     try:
         with open("refactor-temp/all_results.json", "r") as f:
             body = json.load(f)
+            print(f"body: {body}")
             res = np.all(body["0"])
             return res
     except:
