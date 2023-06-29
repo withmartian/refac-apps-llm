@@ -76,16 +76,17 @@ async def cache_wrapper(path, func, *args, **kwargs):
         return res
 
 
-async def safely_add_to_messages(messages, content) -> bool:
+async def safely_add_to_messages(messages, content) -> List[Dict[str, str]]:
     messages.append({"content": content, "role": "user"})
     if res := await call_gpt_directly(messages):
         messages.append(res)
-        return True
+        return messages
     else:
-        return False
+        messages.pop()
+        return None
 
 
-async def get_code_smells(code, problem_description, messages) -> bool:
+async def get_code_smells(code, problem_description, messages):
     assert len(messages) == 0
     content = f"""The following is a problem description:
 {problem_description}
@@ -94,12 +95,12 @@ I am having trouble understanding the following code for the problem. Can you pl
     return await safely_add_to_messages(messages, content)
 
 
-async def get_refactoring_steps(messages) -> bool:
+async def get_refactoring_steps(messages):
     content = """Great, can you refactor this code step-by-step (applying one refactoring at a time) to make it more understandable? Start from the previous version of the code, then output a new version."""
     return await safely_add_to_messages(messages, content)
 
 
-async def get_final_refactored_code(messages) -> bool:
+async def get_final_refactored_code(messages):
     content = """Thanks! Can you output the final version of the code. (Nothing else, no backticks or comment or anything like that.)"""
     return await safely_add_to_messages(messages, content)
 
@@ -130,22 +131,22 @@ async def refactor_code(path, code, problem_question, problem_path) -> Dict[str,
         return {"end_reason": "original-invalid"}
 
     messages = []
-    success = await cache_wrapper(
+    messages = await cache_wrapper(
         get_path("code_smells.json"), get_code_smells, code, problem_question, messages
     )
-    if not success:
+    if messages is None:
         return {"end_reason": "code smells prompt failed"}
 
-    success = await cache_wrapper(
+    messages = await cache_wrapper(
         get_path("refactoring_steps.json"), get_refactoring_steps, messages
     )
-    if not success:
+    if messages is None:
         return {"end_reason": "refactoring steps prompt failed"}
 
-    success = await cache_wrapper(
+    messages = await cache_wrapper(
         get_path("final_refactored_code.json"), get_final_refactored_code, messages
     )
-    if not success:
+    if messages is None:
         return {"end_reason": "final refactored code prompt failed"}
 
     code = messages[-1]["content"]
