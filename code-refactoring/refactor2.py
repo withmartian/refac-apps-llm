@@ -43,6 +43,7 @@ def validate(code, problem_path) -> bool:
             body = json.load(f)
             print(f"body: {body}")
             res = np.all(body["0"])
+            print(f"res: {res}")
             return res
     except:
         return False
