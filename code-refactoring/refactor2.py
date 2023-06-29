@@ -296,6 +296,7 @@ async def generate_refactorings(
 
     async def task(output_path, solution, problem_path):
         problem_question = get_problem_question(problem_path)
+        print("problem question:", problem_question)
         mini_tasks = []
         for i in range(attempts):
             path = os.path.join(output_path, f"attempt-{i}")

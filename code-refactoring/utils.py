@@ -52,6 +52,7 @@ async def call_gpt(prompt: str) -> str:
 
 async def call_gpt_directly(messages: List[Dict[str, str]]) -> Optional[Dict[str, str]]:
     print("Calling GPT directly.")
+    print(messages)
     tokens = len(enc.encode("".join([message["content"] for message in messages])))
     if tokens > TOKEN_LIMIT:
         print("Skipping prompt due to token limit.")
