@@ -278,7 +278,7 @@ async def generate_refactorings(
     bar = tqdm(total=len(problems) * attempts)
 
     async def task(output_path, solution, problem_path):
-        problem_question = await get_problem_question(problem_path)
+        problem_question = get_problem_question(problem_path)
         mini_tasks = []
         for i in range(attempts):
             path = os.path.join(output_path, f"attempt-{i}")
@@ -306,10 +306,7 @@ async def generate_refactorings(
         }
 
     async def tasks(problem):
-        print("training path:", training_path)
-        print("problem:", problem)
         problem_path = os.path.join(training_path, problem)
-        print(problem_path)
         if not os.path.isdir(problem_path):
             return
 
@@ -343,7 +340,6 @@ async def main(
     start = max(start, 0)
     end = min(end, len(problems))
     problems = problems[start:end]
-    print("problems:", problems)
     await generate_refactorings(
         problems, training_path, output_dir, attempts, solution_limit
     )
