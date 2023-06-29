@@ -175,14 +175,14 @@ async def refactor_code(path, code, problem_question, problem_path) -> Dict[str,
     return {"end_reason": "success", "code": final_refactored_code}
 
 
-def get_existing_history(problem_path):
-    history_path = os.path.join(problem_path, "history.json")
+def get_existing_history(save_path):
+    history_path = os.path.join(save_path, "history.json")
     if os.path.exists(history_path):
         with open(history_path, "r") as f:
             try:
                 return json.load(f)
             except:
-                print("Failed to load history for problem", problem_path)
+                print("Failed to load history for problem", save_path)
                 pass
     return []
 
@@ -198,9 +198,12 @@ def get_historical_best(history):
 
 
 async def get_best_refactor(
-    original_code, problem_description, refactors: List[str], problem_path: str
+    original_code,
+    problem_description,
+    refactors: List[str],
+    save_path: str,
 ) -> str:
-    history = get_existing_history(problem_path)
+    history = get_existing_history(save_path)
     assert len(history) == 0 or history[0]["defender"] == original_code
 
     # skip refactors that have already been tried
@@ -230,19 +233,19 @@ async def get_best_refactor(
             best_refactor = new_refactor
 
         # cache history
-        with open(os.path.join(problem_path, "history.json"), "w") as f:
+        with open(os.path.join(save_path, "history.json"), "w") as f:
             json.dump(history, f, indent=4)
     return best_refactor
 
 
-def get_existing_history_v2(problem_path):
-    history_path = os.path.join(problem_path, "history2.json")
+def get_existing_history_v2(save_path):
+    history_path = os.path.join(save_path, "history2.json")
     if os.path.exists(history_path):
         with open(history_path, "r") as f:
             try:
                 return json.load(f)
             except:
-                print("Failed to load history for problem", problem_path)
+                print("Failed to load history for problem", save_path)
                 pass
     return {
         "fighters": [],
@@ -251,9 +254,12 @@ def get_existing_history_v2(problem_path):
 
 
 async def get_best_refactor_v2(
-    original_code, problem_description, refactors: List[str], problem_path: str
+    original_code,
+    problem_description,
+    refactors: List[str],
+    save_path: str,
 ) -> str:
-    history = get_existing_history_v2(problem_path)
+    history = get_existing_history_v2(save_path)
     assert len(history["fighters"]) == 0 or original_code in history["fighters"]
 
     rem_refactors = [
@@ -278,7 +284,7 @@ async def get_best_refactor_v2(
         rem_refactors[best_refactor_id - 2] if best_refactor_id > 1 else best_refactor
     )
 
-    with open(os.path.join(problem_path, "history2.json"), "w") as f:
+    with open(os.path.join(save_path, "history2.json"), "w") as f:
         json.dump(history, f, indent=4)
 
     return history["winner"]
@@ -307,7 +313,7 @@ async def generate_refactorings(
 
         # get existing best refactorings
         best_refactors = None
-        if os.path.exists(os.path.join(problem_path, "best_refactors.json")):
+        if os.path.exists(os.path.join(output_path, "best_refactors.json")):
             with open(os.path.join(problem_path, "best_refactors.json"), "r") as f:
                 best_refactors = json.load(f)
 
