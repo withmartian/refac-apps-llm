@@ -199,14 +199,15 @@ async def get_best_refactor(
         comparison = await get_refactored_code_comparison(
             original_code, [best_refactor, new_refactor], problem_description
         )
-        if comparison.endswith("."):
-            comparison = comparison[:-1]
+        comparison_winner = get_comparison_winner(comparison)
+        if comparison_winner is None:
+            return None
         history.append(
             {
                 "defender": best_refactor,
                 "attacker": new_refactor,
                 "fight": comparison,
-                "attacker_wins": comparison[-1] == "2",
+                "attacker_wins": comparison_winner == 2,
             }
         )
         if history[-1]["attacker_wins"]:
@@ -231,7 +232,15 @@ def get_existing_history_v2(save_path):
         "original": None,
         "fighters": [],
         "winner": None,
+        "comparisons": [],
     }
+
+
+def get_comparison_winner(comparison):
+    for i in range(len(comparison) - 1, -1, -1):
+        if comparison[i].isdigit():
+            return int(comparison[i])
+    return None
 
 
 async def get_best_refactor_v2(
@@ -253,14 +262,17 @@ async def get_best_refactor_v2(
     comparison = await get_refactored_code_comparison(
         best_refactor, [best_refactor] + rem_refactors, problem_description
     )
-    if comparison.endswith("."):
-        comparison = comparison[:-1]
-    best_refactor_id = int(comparison[-1])
+    comparison_winner = get_comparison_winner(comparison)
+    if comparison_winner is None:
+        return None
 
+    history["comparisons"].append(
+        {"fighters": [best_refactor] + rem_refactors, "comparison": comparison}
+    )
     history["original"] = original_code
     history["fighters"] += rem_refactors
     history["winner"] = (
-        rem_refactors[best_refactor_id - 2] if best_refactor_id > 1 else best_refactor
+        rem_refactors[comparison_winner - 2] if comparison_winner > 1 else best_refactor
     )
 
     with open(os.path.join(save_path, "history2.json"), "w") as f:
@@ -269,67 +281,44 @@ async def get_best_refactor_v2(
     return history["winner"]
 
 
+COMPARERS = [get_best_refactor, get_best_refactor_v2]
+
+
 async def generate_refactorings(
-    problems, training_path, output_dir, attempts, solution_limit
+    problems, training_path, output_dir, attempts, solution_limit, comparers
 ):
     bar = tqdm(total=len(problems) * attempts)
 
     async def task(output_path, solution, problem_path):
         problem_question = get_problem_question(problem_path)
-        print("problem question:", problem_question)
-        mini_tasks = []
-        for i in range(attempts):
-            path = os.path.join(output_path, f"attempt-{i}")
-            refactoring_res = refactor_code(
-                path, solution, problem_question, problem_path
-            )
-            mini_tasks.append(refactoring_res)
+        get_path = lambda i: os.path.join(output_path, f"attempt-{i}")
+        mini_tasks = [
+            refactor_code(get_path(i), solution, problem_question, problem_path)
+            for i in range(attempts)
+        ]
         results = await asyncio.gather(*mini_tasks)
         bar.update(attempts)
 
+        # show results of all attempts to refactor
         with open(os.path.join(output_path, "results.json"), "w") as f:
-            print("saving results to", output_path)
-            print("results:\n", results)
             json.dump(results, f, indent=4)
 
+        # filter out unsuccessful refactorings
         successful_refactors = [
             result["code"] for result in results if result["end_reason"] == "success"
         ]
-        print("successful refactors:\n", successful_refactors)
 
         # get existing best refactorings
-        best_refactors = None
-        if os.path.exists(os.path.join(output_path, "best_refactors.json")):
-            with open(os.path.join(output_path, "best_refactors.json"), "r") as f:
-                best_refactors = json.load(f)
+        res = dict()
+        for comparer in comparers:
+            best_refactor = await comparer(
+                solution, problem_question, successful_refactors, output_path
+            )
+            res[comparer.__name__] = best_refactor
 
-        if best_refactors is not None and set(best_refactors["refactors"]) == set(
-            successful_refactors
-        ):
-            print("returning cache")
-            return best_refactors["best"]
-
-        # get the best refactoring
-        best_refactor = await get_best_refactor(
-            solution, problem_question, successful_refactors, output_path
-        )
-        print("best refactoring:\n", best_refactor)
-
-        best_refactor2 = await get_best_refactor_v2(
-            solution, problem_question, successful_refactors, output_path
-        )
-        print("best refactoring2:\n", best_refactor2)
-
-        data = {
-            "refactors": successful_refactors,
-            "best": {
-                "v1": best_refactor,
-                "v2": best_refactor2,
-            },
-        }
         with open(os.path.join(output_path, "best_refactors.json"), "w") as f:
-            json.dump(data, f, indent=4)
-        return data["best"]
+            json.dump(res, f, indent=4)
+        return res
 
     async def tasks(problem):
         problem_path = os.path.join(training_path, problem)
@@ -361,13 +350,14 @@ async def main(
     end: int,
     attempts: int,
     solution_limit: int,
+    comparers: List[int],
 ):
     problems = sorted(os.listdir(training_path))
     start = max(start, 0)
     end = min(end, len(problems))
     problems = problems[start:end]
     await generate_refactorings(
-        problems, training_path, output_dir, attempts, solution_limit
+        problems, training_path, output_dir, attempts, solution_limit, comparers
     )
 
 
@@ -407,6 +397,14 @@ def parse_args():
         type=str,
         default="APPS/train",
         help="The path to the training problems.",
+    )
+    parser.add_argument(
+        "--comparers",
+        nargs="+",
+        type=int,
+        choices=list(range(len(COMPARERS))),
+        default=[1],
+        help="The indices of the comparers to use.",
     )
     return parser.parse_args()
 
