@@ -1,4 +1,5 @@
 import argparse
+import random
 import subprocess
 import sys
 
@@ -209,6 +210,7 @@ async def get_best_refactor(
         for refactor in refactors
         if refactor not in [x["attacker"] for x in history]
     ]
+    random.shuffle(rem_refactors)
 
     best_refactor = get_historical_best(history) or original_code
     for new_refactor in rem_refactors:
@@ -269,6 +271,7 @@ async def get_best_refactor_v2(
     rem_refactors = [
         refactor for refactor in refactors if refactor not in history["fighters"]
     ]
+    random.shuffle(rem_refactors)
     best_refactor = history["winner"] or original_code
 
     if len(rem_refactors) == 0:
