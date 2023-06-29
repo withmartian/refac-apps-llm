@@ -134,11 +134,11 @@ I want you to evaluate the refactoring from the {n} engineers. List the pros and
     return await call_gpt_directly(messages)
 
 
-async def refactor_code(path, code, problem_question) -> Dict[str, str]:
+async def refactor_code(path, code, problem_question, problem_path) -> Dict[str, str]:
     get_path = lambda x: os.path.join(path, x)
-    os.makedirs(get_path(""), exist_ok=True)
+    os.makedirs(path, exist_ok=True)
 
-    if not validate(code, problem_question):
+    if not validate(code, problem_path):
         return {"end_reason": "original-invalid"}
 
     code_smells = await cache_wrapper(
@@ -282,7 +282,9 @@ async def generate_refactorings(
         mini_tasks = []
         for i in range(attempts):
             path = os.path.join(output_path, f"attempt-{i}")
-            refactoring_res = refactor_code(path, solution, problem_question)
+            refactoring_res = refactor_code(
+                path, solution, problem_question, problem_path
+            )
             mini_tasks.append(refactoring_res)
         results = asyncio.gather(*mini_tasks)
         bar.update(attempts)
