@@ -345,7 +345,7 @@ async def main(
     problems = problems[start:end]
     print("problems:", problems)
     await generate_refactorings(
-        output_dir, training_path, problems, attempts, solution_limit
+        problems, training_path, output_dir, attempts, solution_limit
     )
 
 
