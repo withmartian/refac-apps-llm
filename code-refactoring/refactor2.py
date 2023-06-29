@@ -328,14 +328,14 @@ async def generate_refactorings(
         )
         print("best refactoring:\n", best_refactor)
         # check if the best refactoring is valid
-        if validate(best_refactor, problem_question):
+        if validate(best_refactor, problem_path):
             print("best refactoring is valid")
 
         best_refactor2 = await get_best_refactor_v2(
             solution, problem_question, successful_refactors, problem_path
         )
         print("best refactoring2:\n", best_refactor2)
-        if validate(best_refactor2, problem_question):
+        if validate(best_refactor2, problem_path):
             print("best refactoring2 is valid")
 
         data = {
