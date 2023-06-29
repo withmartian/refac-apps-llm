@@ -6,10 +6,15 @@ import openai
 import tiktoken
 from aiolimiter import AsyncLimiter
 
-TOKEN_LIMIT = 90000 / 3
+GPT35_TOKEN_LIMIT = 90000 / 3
 
 chat_rate_limiter_gpt35 = AsyncLimiter(3500 / 1.5)
-chat_token_limiter_gpt35 = AsyncLimiter(TOKEN_LIMIT)
+chat_token_limiter_gpt35 = AsyncLimiter(GPT35_TOKEN_LIMIT)
+
+GPT4_TOKEN_LIMIT = 40000 / 2
+
+chat_rate_limiter_gpt4 = AsyncLimiter(200 / 1.5)
+chat_token_limiter_gpt4 = AsyncLimiter(GPT4_TOKEN_LIMIT)
 
 enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
@@ -22,7 +27,7 @@ async def call_gpt(prompt: str) -> str:
         )
     )
     await chat_rate_limiter_gpt35.acquire()
-    if tokens > TOKEN_LIMIT:
+    if tokens > GPT35_TOKEN_LIMIT:
         print("Skipping prompt due to token limit.")
         return None, False
     await chat_token_limiter_gpt35.acquire(tokens)
@@ -51,15 +56,15 @@ async def call_gpt(prompt: str) -> str:
 
 async def call_gpt_directly(messages: List[Dict[str, str]]) -> Optional[Dict[str, str]]:
     tokens = len(enc.encode("".join([message["content"] for message in messages])))
-    if tokens > TOKEN_LIMIT:
+    if tokens > GPT4_TOKEN_LIMIT:
         print("Skipping prompt due to token limit.")
         return None
 
-    await chat_token_limiter_gpt35.acquire(tokens)
-    await chat_rate_limiter_gpt35.acquire()
+    await chat_rate_limiter_gpt4.acquire(tokens)
+    await chat_token_limiter_gpt4.acquire()
     try:
         completion = await openai.ChatCompletion.acreate(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=messages,
         )
         return completion.choices[0].message
