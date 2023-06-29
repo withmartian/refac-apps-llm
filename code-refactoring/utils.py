@@ -60,8 +60,8 @@ async def call_gpt_directly(messages: List[Dict[str, str]]) -> Optional[Dict[str
         print("Skipping prompt due to token limit.")
         return None
 
-    await chat_rate_limiter_gpt4.acquire(tokens)
-    await chat_token_limiter_gpt4.acquire()
+    await chat_rate_limiter_gpt4.acquire()
+    await chat_token_limiter_gpt4.acquire(tokens)
     try:
         completion = await openai.ChatCompletion.acreate(
             model="gpt-4",
