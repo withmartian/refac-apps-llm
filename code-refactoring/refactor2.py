@@ -306,6 +306,8 @@ async def generate_refactorings(
         }
 
     async def tasks(problem):
+        print("training path:", training_path)
+        print("problem:", problem)
         problem_path = os.path.join(training_path, problem)
         print(problem_path)
         if not os.path.isdir(problem_path):
@@ -341,6 +343,7 @@ async def main(
     start = max(start, 0)
     end = min(end, len(problems))
     problems = problems[start:end]
+    print("problems:", problems)
     await generate_refactorings(
         output_dir, training_path, problems, attempts, solution_limit
     )
