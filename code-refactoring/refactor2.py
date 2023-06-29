@@ -300,11 +300,11 @@ async def generate_refactorings(
         ]
 
         # get the best refactoring
-        best_refactor = get_best_refactor(
+        best_refactor = await get_best_refactor(
             solution, problem_question, successful_refactors, problem_path
         )
         print("best refactoring:\n", best_refactor)
-        best_refactor2 = get_best_refactor_v2(
+        best_refactor2 = await get_best_refactor_v2(
             solution, problem_question, successful_refactors, problem_path
         )
         print("best refactoring2:\n", best_refactor2)
