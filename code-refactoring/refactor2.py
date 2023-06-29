@@ -120,7 +120,7 @@ Here's a description of the problem the code is intended to solve:
 
 {''.join(get_refactor(i, code) for i, code in enumerate(codes))}
 I want you to evaluate the refactoring from the {n} engineers. List the pros and cons of each refactoring, then state which refactoring is easier to understand and maintain. When stating which is better, at the very end, output a number from 1 to {n} for the refactoring you think is better."""
-    return await call_gpt(prompt)
+    return (await call_gpt(prompt))[0]
 
 
 async def refactor_code(path, code, problem_question, problem_path) -> Dict[str, str]:
