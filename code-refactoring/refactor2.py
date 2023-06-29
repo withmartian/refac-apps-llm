@@ -32,7 +32,9 @@ def validate(code, problem_path) -> bool:
             "",
             "--save",
             "refactor-temp",
-        ]
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     try:
         with open("refactor-temp/all_results.json", "r") as f:
@@ -200,7 +202,7 @@ async def get_best_refactor(
             original_code, [best_refactor, new_refactor], problem_description
         )
         comparison_winner = get_comparison_winner(comparison)
-        if comparison_winner is None:
+        if comparison_winner is None or comparison_winner not in [1, 2]:
             return None
         history.append(
             {
@@ -264,13 +266,15 @@ async def get_best_refactor_v2(
         original_code, fighters, problem_description
     )
     comparison_winner = get_comparison_winner(comparison)
-    if comparison_winner is None:
+    if comparison_winner is None or comparison_winner not in list(
+        range(1, len(fighters) + 1)
+    ):
         return None
 
     history["comparisons"].append({"fighters": fighters, "comparison": comparison})
     history["original"] = original_code
     history["fighters"] += rem_refactors
-    history["winner"] = rem_refactors[comparison_winner - 1]
+    history["winner"] = fighters[comparison_winner - 1]
 
     with open(os.path.join(save_path, "history2.json"), "w") as f:
         json.dump(history, f, indent=4)
