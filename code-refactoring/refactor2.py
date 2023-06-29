@@ -60,13 +60,19 @@ def parse_code(code):
 async def cache_wrapper(path, func, *args, **kwargs):
     if os.path.exists(path):
         with open(path, "r") as f:
-            return f.read()
+            if path.endswith(".json"):
+                return json.load(f)
+            else:
+                return f.read()
     else:
         res = await func(*args, **kwargs)
         if res is None:
             return None
         with open(path, "w") as f:
-            f.write(res)
+            if path.endswith(".json"):
+                json.dump(res, f, indent=4)
+            else:
+                f.write(res)
         return res
 
 
@@ -142,21 +148,21 @@ async def refactor_code(path, code, problem_question, problem_path) -> Dict[str,
         return {"end_reason": "original-invalid"}
 
     code_smells = await cache_wrapper(
-        get_path("code_smells.txt"), get_code_smells, code, problem_question
+        get_path("code_smells.json"), get_code_smells, code, problem_question
     )
     if code_smells is None:
         return {"end_reason": "code smells prompt failed"}
 
     messages = [code_smells]
     refactoring_steps = await cache_wrapper(
-        get_path("refactoring_steps.txt"), get_refactoring_steps, messages
+        get_path("refactoring_steps.json"), get_refactoring_steps, messages
     )
     if refactoring_steps is None:
         return {"end_reason": "refactoring steps prompt failed"}
 
     messages.append(refactoring_steps)
     final_refactored_code = await cache_wrapper(
-        get_path("final_refactored_code.txt"), get_final_refactored_code, messages
+        get_path("final_refactored_code.json"), get_final_refactored_code, messages
     )
     if final_refactored_code is None:
         return {"end_reason": "final refactored code prompt failed"}
@@ -389,5 +395,4 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    print(args)
     asyncio.run(main(**vars(args)))
