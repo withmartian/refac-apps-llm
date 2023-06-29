@@ -150,7 +150,7 @@ async def refactor_code(path, code, problem_question, problem_path) -> Dict[str,
     )
     if messages is None:
         return {"end_reason": "final refactored code prompt failed"}
-    messages["content"] = parse_code(messages["content"])
+    messages[-1]["content"] = parse_code(messages[-1]["content"])
 
     code = messages[-1]["content"]
     if not validate(code, problem_path):
