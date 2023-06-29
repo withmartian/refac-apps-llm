@@ -305,19 +305,43 @@ async def generate_refactorings(
             result["code"] for result in results if result["end_reason"] == "success"
         ]
 
+        # get existing best refactorings
+        best_refactors = None
+        if os.path.exists(os.path.join(problem_path, "best_refactors.json")):
+            with open(os.path.join(problem_path, "best_refactors.json"), "r") as f:
+                best_refactors = json.load(f)
+
+        if best_refactors is not None and set(best_refactors["refactors"]) == set(
+            successful_refactors
+        ):
+            return best_refactors["best"]
+
         # get the best refactoring
         best_refactor = await get_best_refactor(
             solution, problem_question, successful_refactors, problem_path
         )
         print("best refactoring:\n", best_refactor)
+        # check if the best refactoring is valid
+        if validate(best_refactor, problem_question):
+            print("best refactoring is valid")
+
         best_refactor2 = await get_best_refactor_v2(
             solution, problem_question, successful_refactors, problem_path
         )
         print("best refactoring2:\n", best_refactor2)
-        return {
-            "v1": best_refactor,
-            "v2": best_refactor2,
+        if validate(best_refactor2, problem_question):
+            print("best refactoring2 is valid")
+
+        data = {
+            "refactors": successful_refactors,
+            "best": {
+                "v1": best_refactor,
+                "v2": best_refactor2,
+            },
         }
+        with open(os.path.join(problem_path, "best_refactors.json"), "w") as f:
+            json.dump(data, f, indent=4)
+        return data["best"]
 
     async def tasks(problem):
         problem_path = os.path.join(training_path, problem)
