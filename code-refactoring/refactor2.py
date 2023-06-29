@@ -299,7 +299,6 @@ async def generate_refactorings(
             for i in range(attempts)
         ]
         results = await asyncio.gather(*mini_tasks)
-        bar.update(attempts)
 
         # show results of all attempts to refactor
         with open(os.path.join(output_path, "results.json"), "w") as f:
@@ -338,6 +337,7 @@ async def generate_refactorings(
             res.append(task(path, solution, problem_path))
 
         results = await asyncio.gather(*res)
+        bar.update(attempts)
         with open(os.path.join(output_dir, id, "results.json"), "w") as f:
             json.dump(results, f, indent=4)
 
