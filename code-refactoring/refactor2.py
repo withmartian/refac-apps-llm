@@ -286,7 +286,7 @@ async def generate_refactorings(
                 path, solution, problem_question, problem_path
             )
             mini_tasks.append(refactoring_res)
-        results = asyncio.gather(*mini_tasks)
+        results = await asyncio.gather(*mini_tasks)
         bar.update(attempts)
 
         successful_refactors = [
