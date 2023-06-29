@@ -130,6 +130,8 @@ Here's a description of the problem the code is intended to solve:
 {problem_description} 
 ```
 
+Here are the refactorings from the {n} engineers:
+
 {''.join(get_refactor(i, code) for i, code in enumerate(codes))}
 I want you to evaluate the refactoring from the {n} engineers. List the pros and cons of each refactoring, then state which refactoring is easier to understand and maintain. When stating which is better, at the very end, output a number from 1 to {n} for the refactoring you think is better. Only output the number at the end, nothing else."""
     print(f"PROMPT: {prompt}")
