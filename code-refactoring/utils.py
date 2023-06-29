@@ -15,6 +15,7 @@ enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
 
 async def call_gpt(prompt: str) -> str:
+    print("Calling GPT.")
     tokens = len(
         enc.encode(
             prompt
@@ -50,6 +51,7 @@ async def call_gpt(prompt: str) -> str:
 
 
 async def call_gpt_directly(messages: List[Dict[str, str]]) -> Optional[Dict[str, str]]:
+    print("Calling GPT directly.")
     tokens = len(enc.encode("".join([message["content"] for message in messages])))
     if tokens > TOKEN_LIMIT:
         print("Skipping prompt due to token limit.")
