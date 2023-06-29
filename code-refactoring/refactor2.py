@@ -42,7 +42,8 @@ def validate(code, problem_path) -> bool:
         with open("refactor-temp/all_results.json", "r") as f:
             body = json.load(f)
             print(f"body: {body}")
-            if not isinstance(body["0"][0], bool):
+            # check if it is a list of booleans
+            if not isinstance(body["0"][0][0], bool):
                 print("not bool")
                 return False
             res = np.all(body["0"])
