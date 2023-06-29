@@ -13,7 +13,7 @@ from typing import Dict, List
 
 import numpy as np
 from tqdm import tqdm
-from utils import call_gpt_directly, sort_python_code
+from utils import call_gpt_directly, call_gpt
 
 
 def validate(code, problem_path) -> bool:
@@ -76,43 +76,32 @@ async def cache_wrapper(path, func, *args, **kwargs):
         return res
 
 
-async def get_code_smells(code, problem_description):
+async def safely_add_to_messages(messages, content) -> bool:
+    messages.append({"content": content, "role": "user"})
+    if res := await call_gpt_directly(messages):
+        messages.append(res)
+        return True
+    else:
+        return False
+
+
+async def get_code_smells(code, problem_description, messages) -> bool:
+    assert len(messages) == 0
     content = f"""The following is a problem description:
 {problem_description}
 I am having trouble understanding the following code for the problem. Can you please list the relevant code smells in this code given the following problem description:
 {code}"""
-    messages = [
-        {
-            "content": content,
-            "role": "user",
-        }
-    ]
-    return await call_gpt_directly(messages)
+    return await safely_add_to_messages(messages, content)
 
 
-async def get_refactoring_steps(prev_messages):
-    prompt = """Great, can you refactor this code step-by-step (applying one refactoring at a time) to make it more understandable? Start from the previous version of the code, then output a new version."""
-    messages = prev_messages + [
-        {
-            "content": prompt,
-            "role": "user",
-        }
-    ]
-    return await call_gpt_directly(messages)
+async def get_refactoring_steps(messages) -> bool:
+    content = """Great, can you refactor this code step-by-step (applying one refactoring at a time) to make it more understandable? Start from the previous version of the code, then output a new version."""
+    return await safely_add_to_messages(messages, content)
 
 
-async def get_final_refactored_code(prev_messages):
-    prompt = """Thanks! Can you output the final version of the code. (Nothing else, no backticks or comment or anything like that.)"""
-    messages = prev_messages + [
-        {
-            "content": prompt,
-            "role": "user",
-        }
-    ]
-    code_message = await call_gpt_directly(messages)
-    if code_message is not None:
-        code_message["content"] = parse_code(code_message["content"])
-    return code_message
+async def get_final_refactored_code(messages) -> bool:
+    content = """Thanks! Can you output the final version of the code. (Nothing else, no backticks or comment or anything like that.)"""
+    return await safely_add_to_messages(messages, content)
 
 
 async def get_refactored_code_comparison(
@@ -130,14 +119,7 @@ Here's a description of the problem the code is intended to solve:
 
 {''.join(get_refactor(i, code) for i, code in enumerate(codes))}
 I want you to evaluate the refactoring from the {n} engineers. List the pros and cons of each refactoring, then state which refactoring is easier to understand and maintain. When stating which is better, at the very end, output a number from 1 to {n} for the refactoring you think is better."""
-
-    messages = [
-        {
-            "content": prompt,
-            "role": "user",
-        }
-    ]
-    return await call_gpt_directly(messages)
+    return await call_gpt(prompt)
 
 
 async def refactor_code(path, code, problem_question, problem_path) -> Dict[str, str]:
@@ -147,31 +129,30 @@ async def refactor_code(path, code, problem_question, problem_path) -> Dict[str,
     if not validate(code, problem_path):
         return {"end_reason": "original-invalid"}
 
-    code_smells = await cache_wrapper(
-        get_path("code_smells.json"), get_code_smells, code, problem_question
+    messages = []
+    success = await cache_wrapper(
+        get_path("code_smells.json"), get_code_smells, code, problem_question, messages
     )
-    if code_smells is None:
+    if not success:
         return {"end_reason": "code smells prompt failed"}
 
-    messages = [code_smells]
-    refactoring_steps = await cache_wrapper(
+    success = await cache_wrapper(
         get_path("refactoring_steps.json"), get_refactoring_steps, messages
     )
-    if refactoring_steps is None:
+    if not success:
         return {"end_reason": "refactoring steps prompt failed"}
 
-    messages.append(refactoring_steps)
-    final_refactored_code = await cache_wrapper(
+    success = await cache_wrapper(
         get_path("final_refactored_code.json"), get_final_refactored_code, messages
     )
-    if final_refactored_code is None:
+    if not success:
         return {"end_reason": "final refactored code prompt failed"}
 
-    final_refactored_code = final_refactored_code["content"]
-    if not validate(final_refactored_code, problem_path):
+    code = messages[-1]["content"]
+    if not validate(code, problem_path):
         return {"end_reason": "final refactored code invalid"}
 
-    return {"end_reason": "success", "code": final_refactored_code}
+    return {"end_reason": "success", "code": code}
 
 
 def get_existing_history(save_path):
