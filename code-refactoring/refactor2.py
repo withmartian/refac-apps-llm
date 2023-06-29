@@ -307,6 +307,8 @@ async def generate_refactorings(
         bar.update(attempts)
 
         with open(os.path.join(output_path, "results.json"), "w") as f:
+            print("saving results to", output_path)
+            print("results:\n", results)
             json.dump(results, f, indent=4)
 
         successful_refactors = [
