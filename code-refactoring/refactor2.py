@@ -216,6 +216,8 @@ async def get_best_refactor(
             original_code, [best_refactor, new_refactor], problem_description
         )
         comparison_content = comparison["content"]
+        if comparison_content.endswith("."):
+            comparison_content = comparison_content[:-1]
         history.append(
             {
                 "defender": best_refactor,
@@ -267,6 +269,8 @@ async def get_best_refactor_v2(
         best_refactor, [best_refactor] + rem_refactors, problem_description
     )
     comparison_content = comparison["content"]
+    if comparison_content.endswith("."):
+        comparison_content = comparison_content[:-1]
     best_refactor_id = int(comparison_content[-1])
 
     history["fighters"] += rem_refactors
