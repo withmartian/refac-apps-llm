@@ -296,13 +296,18 @@ async def generate_refactorings(
             solution, problem_question, successful_refactors, problem_path
         )
         print("best refactoring:\n", best_refactor)
-        best_refactoring2 = get_best_refactor_v2(
+        best_refactor2 = get_best_refactor_v2(
             solution, problem_question, successful_refactors, problem_path
         )
-        print("best refactoring2:\n", best_refactoring2)
+        print("best refactoring2:\n", best_refactor2)
+        return {
+            "v1": best_refactor,
+            "v2": best_refactor2,
+        }
 
     async def tasks(problem):
         problem_path = os.path.join(training_path, problem)
+        print(problem_path)
         if not os.path.isdir(problem_path):
             return
 
@@ -383,4 +388,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    print(args)
     asyncio.run(main(**vars(args)))
