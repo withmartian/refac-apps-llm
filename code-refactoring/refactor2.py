@@ -306,9 +306,13 @@ async def generate_refactorings(
         results = await asyncio.gather(*mini_tasks)
         bar.update(attempts)
 
+        with open(os.path.join(output_path, "results.json"), "w") as f:
+            json.dump(results, f, indent=4)
+
         successful_refactors = [
             result["code"] for result in results if result["end_reason"] == "success"
         ]
+        print("successful refactors:\n", successful_refactors)
 
         # get existing best refactorings
         best_refactors = None
@@ -319,6 +323,7 @@ async def generate_refactorings(
         if best_refactors is not None and set(best_refactors["refactors"]) == set(
             successful_refactors
         ):
+            print("returning cache")
             return best_refactors["best"]
 
         # get the best refactoring
