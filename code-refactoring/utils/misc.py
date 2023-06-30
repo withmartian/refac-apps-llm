@@ -20,15 +20,15 @@ async def cache_wrapper(path: str, func: Callable, *args, **kwargs) -> Any:
 
     is_json = path.endswith(".json")
     if os.path.exists(path):
-        with open(path, "r") as func:
-            return json.load(func) if is_json else func.read()
+        with open(path, "r") as f:
+            return json.load(f) if is_json else f.read()
     else:
         res = await func(*args, **kwargs)
-        with open(path, "w") as func:
+        with open(path, "w") as f:
             if is_json:
-                json.dump(res, func, indent=4)
+                json.dump(res, f, indent=4)
             else:
-                func.write(res)
+                f.write(res)
         return res
 
 
