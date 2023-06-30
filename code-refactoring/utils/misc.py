@@ -1,7 +1,6 @@
 import json
 import os
-from types import UnionType
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Union
 
 ############################################
 ############### MISC METHODS ###############
@@ -33,7 +32,7 @@ def cache_wrapper(path: str, func: Callable, *args, **kwargs) -> Any:
         return res
 
 
-def get_json_with_default(path: str, default=dict) -> UnionType[Dict, List]:
+def get_json_with_default(path: str, default=dict) -> Union[Dict, List]:
     """
     Gets the JSON from the given path, or returns the default if JSON is not properly formatted.
 
