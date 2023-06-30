@@ -251,7 +251,7 @@ async def get_best_pairwise_refactor(
 
         # get the winner of the comparison
         comparison_winner = get_comparison_winner(comparison)
-        if comparison_winner is None or comparison_winner not in [1, 2]:
+        if comparison_winner not in [1, 2]:
             return None
 
         history.append(
@@ -317,9 +317,7 @@ async def get_best_multinomial_refactor(
 
     # get the winner of the comparison
     comparison_winner = get_comparison_winner(comparison)
-    if comparison_winner is None or comparison_winner not in list(
-        range(1, len(fighters) + 1)
-    ):
+    if comparison_winner not in list(range(1, len(fighters) + 1)):
         return None
 
     # update the history
@@ -411,7 +409,7 @@ async def generate_refactoring(
     problem_path: str,
     comparers: List[Callable],
     num_refactors: int,
-    max_attempts: int,
+    pool_size: int,
     model: str,
 ) -> str:
     """
@@ -422,7 +420,7 @@ async def generate_refactoring(
     :param problem_path: The path to the problem.
     :param comparers: The comparers to use.
     :param num_refactors: The number of refactors to generate.
-    :param max_attempts: The maximum number of attempts to generate a refactor.
+    :param pool_size: The number of refactors to generate in parallel.
     :param model: The model to use.
     :return: The final refactor.
     """
@@ -447,8 +445,9 @@ async def generate_refactoring(
                 problem_path,
                 model,
             )
-            for j in range(max_attempts)
+            for j in range(pool_size)
         ]
+        refactor_statuses = await asyncio.gather(*refactor_statuses)
 
         # filter for refactors that are valid
         refactors = [
@@ -498,7 +497,7 @@ async def refactorings_main(
     training_path: str,
     output_dir: str,
     num_refactors: int,
-    max_attempts: int,
+    pool_size: int,
     solution_limit: int,
     comparers: List[Callable],
     model: str,
@@ -509,12 +508,13 @@ async def refactorings_main(
     :param problems: The problems to generate refactorings for.
     :param training_path: The path to the training data.
     :param output_dir: The directory to save the refactorings to.
-    :param attempts: The number of attempts to generate refactorings for.
+    :param num_refactors: The number of refactors to generate.
+    :param pool_size: The number of refactors to generate in parallel.
     :param solution_limit: The maximum number of solutions to generate refactorings for.
     :param comparers: The comparers to use to select the best refactor.
     :param model: The model to use.
     """
-    bar = tqdm(total=len(problems) * max_attempts)
+    bar = tqdm(total=len(problems) * pool_size)
 
     async def task(problem: str):
         """
@@ -535,15 +535,15 @@ async def refactorings_main(
                 generate_refactoring(
                     path,
                     solution,
-                    path,
+                    problem_path,
                     comparers,
                     num_refactors,
-                    max_attempts,
+                    pool_size,
                     model,
                 )
             )
 
-        bar.update(max_attempts)
+        bar.update(pool_size)
         results = await asyncio.gather(*minitasks)
         with open(os.path.join(output_dir, id, "results.json"), "w") as f:
             json.dump(results, f, indent=4)
@@ -557,26 +557,55 @@ async def main(
     training_path: str,
     start: int,
     end: int,
-    attempts: int,
+    num_refactors: int,
+    pool_size: int,
     solution_limit: int,
     comparers: List[int],
-):
+    model: str,
+) -> None:
+    """
+    Main function.
+
+    :param output_dir: The directory to save the refactorings to.
+    :param training_path: The path to the training data.
+    :param start: The index of the first problem to refactor.
+    :param end: The index of the last problem to refactor.
+    :param num_refactors: The number of refactors to generate.
+    :param pool_size: The number of refactors to generate in parallel.
+    :param solution_limit: The maximum number of solutions to generate refactorings for.
+    :param comparers: The comparers to use to select the best refactor.
+    :param model: The model to use.
+    """
     problems = sorted(os.listdir(training_path))
     start = max(start, 0)
     end = min(end, len(problems))
     problems = problems[start:end]
     comparers = [COMPARERS[i] for i in comparers]
     await refactorings_main(
-        problems, training_path, output_dir, attempts, solution_limit, comparers
+        problems,
+        training_path,
+        output_dir,
+        num_refactors,
+        pool_size,
+        solution_limit,
+        comparers,
+        model,
     )
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "output_dir",
+        "--output-dir",
         type=str,
+        default="refactorings",
         help="The directory to output the refactored code to.",
+    )
+    parser.add_argument(
+        "--training-path",
+        type=str,
+        default="APPS/train",
+        help="The path to the training problems.",
     )
     parser.add_argument(
         "--start",
@@ -591,10 +620,16 @@ def parse_args():
         help="The index of the last problem to refactor.",
     )
     parser.add_argument(
-        "--attempts",
+        "--num_refactors",
         type=int,
         default=1,
-        help="The number of attempts to make for each problem.",
+        help="The number of refactors to generate.",
+    )
+    parser.add_argument(
+        "--pool-size",
+        type=int,
+        default=1,
+        help="The number of refactors to generate in parallel.",
     )
     parser.add_argument(
         "--solution-limit",
@@ -603,18 +638,18 @@ def parse_args():
         help="The number of solutions to refactor for each problem.",
     )
     parser.add_argument(
-        "--training-path",
-        type=str,
-        default="APPS/train",
-        help="The path to the training problems.",
-    )
-    parser.add_argument(
         "--comparers",
         nargs="+",
         type=int,
         choices=list(range(len(COMPARERS))),
         default=[1],
         help="The indices of the comparers to use.",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="gpt-3.5-turbo",
+        help="The model to use.",
     )
     return parser.parse_args()
 
