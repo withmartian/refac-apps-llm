@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, List, Union
 ############################################
 
 
-def cache_wrapper(path: str, func: Callable, *args, **kwargs) -> Any:
+async def cache_wrapper(path: str, func: Callable, *args, **kwargs) -> Any:
     """
     Caches the result of the function in the given path.
 
@@ -23,7 +23,7 @@ def cache_wrapper(path: str, func: Callable, *args, **kwargs) -> Any:
         with open(path, "r") as func:
             return json.load(func) if is_json else func.read()
     else:
-        res = func(*args, **kwargs)
+        res = await func(*args, **kwargs)
         with open(path, "w") as func:
             if is_json:
                 json.dump(res, func, indent=4)
