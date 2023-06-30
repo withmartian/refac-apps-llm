@@ -11,12 +11,14 @@ from aiolimiter import AsyncLimiter
 
 MODEL_SPECIFIC_METHODS = {
     "gpt-3.5-turbo": {
-        "max_tokens": 90000,
         "rate_limiter": AsyncLimiter(3500),
         "token_limiter": AsyncLimiter(90000),
     },
+    "gpt-3.5-turbo-16k": {
+        "rate_limiter": AsyncLimiter(3500),
+        "token_limiter": AsyncLimiter(180000),
+    },
     "gpt-4": {
-        "max_tokens": 40000,
         "rate_limiter": AsyncLimiter(200),
         "token_limiter": AsyncLimiter(40000),
     },
@@ -42,11 +44,13 @@ async def passes_limiter_checks(model: str, messages: List[Message]) -> bool:
     )
     token_size = len(enc.encode(content))
 
-    if token_size > MODEL_SPECIFIC_METHODS[model]["max_tokens"]:
+    rate_limiter = MODEL_SPECIFIC_METHODS[model]["rate_limiter"]
+    token_limiter = MODEL_SPECIFIC_METHODS[model]["token_limiter"]
+    if token_size > token_limiter.max_rate:
         return False
 
-    await MODEL_SPECIFIC_METHODS[model]["rate_limiter"].acquire()
-    await MODEL_SPECIFIC_METHODS[model]["token_limiter"].acquire(token_size)
+    await rate_limiter.acquire()
+    await token_limiter.acquire(token_size)
     return True
 
 
