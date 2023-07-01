@@ -449,7 +449,11 @@ async def generate_refactoring(
             )
             for j in range(pool_size)
         ]
-        refactor_statuses = await asyncio.gather(*refactor_statuses)
+        refactor_statuses = await tqdm.gather(*refactor_statuses)
+
+        # dump the refactor statuses
+        with open(os.path.join(refactor_path, "status.json"), "w") as f:
+            json.dump(refactor_statuses, f, indent=4)
 
         # filter for refactors that are valid
         refactors = [
