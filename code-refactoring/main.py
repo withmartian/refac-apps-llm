@@ -449,7 +449,7 @@ async def generate_refactoring(
             )
             for j in range(pool_size)
         ]
-        refactor_statuses = await tqdm.gather(*refactor_statuses)
+        refactor_statuses = await asyncio.gather(*refactor_statuses)
 
         # dump the refactor statuses
         with open(os.path.join(refactor_path, "status.json"), "w") as f:
@@ -548,11 +548,11 @@ async def refactorings_main(
                 )
             )
 
-        results = await tqdm.gather(*minitasks)
+        results = await tqdm.gather(*minitasks, desc=f"Refactorings for Problem {id}")
         with open(os.path.join(output_dir, id, "results.json"), "w") as f:
             json.dump(results, f, indent=4)
 
-    await tqdm.gather(*[task(problem) for problem in problems])
+    await tqdm.gather(*[task(problem) for problem in problems], desc=f"Problems")
 
 
 async def main(
