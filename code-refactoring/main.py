@@ -295,7 +295,7 @@ async def get_best_multinomial_refactor(
 
     history_path = os.path.join(save_path, "history.json")
     history_obj = get_json_with_default(history_path)
-    history = history_obj.get(get_best_multinomial_refactor.__name__, [])
+    history = history_obj.get(get_best_multinomial_refactor.__name__, dict())
 
     rem_refactors = [r for r in refactors if r not in history.get("fighters", [])]
     best_refactor = history.get("winner") or original_code
