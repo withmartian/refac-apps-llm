@@ -467,7 +467,7 @@ async def generate_refactoring(
         c = Counter()
         for comparer in comparers:
             result = await comparer(
-                code, refactors, problem_question, problem_path, model
+                code, problem_question, refactors, refactor_path, model
             )
             if result is not None:
                 c[result] += 1
