@@ -34,12 +34,15 @@ async def cache_wrapper(path: str, func: Callable, *args, **kwargs) -> Any:
 
 def get_json_with_default(path: str, default=dict) -> Union[Dict, List]:
     """
-    Gets the JSON from the given path, or returns the default if JSON is not properly formatted.
+    Gets the JSON from the given path, or returns the default if JSON is not
+    properly formatted or the file does not exist.
 
     :param path: The path to the JSON file.
-    :param default: The default value to return if the JSON is not properly formatted. (Optional, defaults to dict)
+    :param default: The default value to return. (Optional, defaults to dict)
     :return: The JSON.
     """
+    if not os.path.exists(path):
+        return default()
 
     try:
         with open(path, "r") as f:
