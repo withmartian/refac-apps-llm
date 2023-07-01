@@ -61,10 +61,15 @@ def validate_code(code: str, problem_path: str, display_stdout: bool = False) ->
     )
 
     # check the results
+    res = False
     try:
         with open("refactor-temp/all_results.json", "r") as f:
             body = json.load(f)
-        return isinstance(body["0"][0][0], bool) and np.all(body["0"])
+        res = isinstance(body["0"][0][0], bool) and np.all(body["0"])
     except Exception as e:
         print(f"Error with validate results: {e}")
-        return False
+
+    # clean up
+    os.remove("refactor-temp/all_codes.json")
+
+    return res
