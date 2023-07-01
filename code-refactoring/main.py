@@ -553,10 +553,10 @@ async def refactorings_main(
 
 
 async def main(
-    output_dir: str,
-    training_path: str,
     start: int,
     end: int,
+    output_dir: str,
+    training_path: str,
     num_refactors: int,
     pool_size: int,
     solution_limit: int,
@@ -596,18 +596,6 @@ async def main(
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="refactorings",
-        help="The directory to output the refactored code to.",
-    )
-    parser.add_argument(
-        "--training-path",
-        type=str,
-        default="APPS/train",
-        help="The path to the training problems.",
-    )
-    parser.add_argument(
         "--start",
         type=int,
         default=0,
@@ -620,7 +608,19 @@ def parse_args():
         help="The index of the last problem to refactor.",
     )
     parser.add_argument(
-        "--num_refactors",
+        "--output-dir",
+        type=str,
+        default="refactor-results",
+        help="The directory to output the refactored code to.",
+    )
+    parser.add_argument(
+        "--training-path",
+        type=str,
+        default="APPS/train",
+        help="The path to the training problems.",
+    )
+    parser.add_argument(
+        "--num-refactors",
         type=int,
         default=1,
         help="The number of refactors to generate.",
