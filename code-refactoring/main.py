@@ -323,7 +323,7 @@ async def get_best_multinomial_refactor(
 
     # update the history
     history["comparisons"] = history.get("comparisons", []) + (
-        {"fighters": fighters, "comparison": comparison}
+        [{"fighters": fighters, "comparison": comparison}]
     )
     history["original"] = original_code
     history["fighters"] = history.get("fighters", [])
