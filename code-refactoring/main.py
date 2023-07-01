@@ -327,7 +327,7 @@ async def get_best_multinomial_refactor(
     )
     history["original"] = original_code
     history["fighters"] = history.get("fighters", [])
-    index = order[fighters[comparison_winner - 1]]
+    index = fighters[order[comparison_winner - 1]]
     if index != 0:
         # get index of the winner based on overall list of fighters
         history["winner"] = {
