@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from typing import Any, Callable, Dict, List, Optional
 
 from dotenv import load_dotenv
-from tqdm import tqdm
+from tqdm.asyncio import tqdm
 
 load_dotenv()
 
@@ -27,6 +27,7 @@ async def get_gpt_conv(
     :param content: The content of the message.
     :return: The messages from GPT conversation. (None if GPT fails)
     """
+
     messages = prev_messages + [{"content": content, "role": "user"}]
     message = await call_gpt_directly(messages, model)
     if message is None:
@@ -424,6 +425,7 @@ async def generate_refactoring(
     :param model: The model to use.
     :return: The final refactor.
     """
+
     problem_question = get_problem_question(problem_path)
     for i in range(num_refactors):
         path = os.path.join(output_path, "final_refactoring.txt")
@@ -514,7 +516,6 @@ async def refactorings_main(
     :param comparers: The comparers to use to select the best refactor.
     :param model: The model to use.
     """
-    bar = tqdm(total=len(problems) * pool_size)
 
     async def task(problem: str):
         """
@@ -543,13 +544,11 @@ async def refactorings_main(
                 )
             )
 
-        bar.update(pool_size)
-        results = await asyncio.gather(*minitasks)
+        results = await tqdm.gather(*minitasks)
         with open(os.path.join(output_dir, id, "results.json"), "w") as f:
             json.dump(results, f, indent=4)
 
-    await asyncio.gather(*[task(problem) for problem in problems])
-    bar.close()
+    await tqdm.gather(*[task(problem) for problem in problems])
 
 
 async def main(
@@ -576,6 +575,7 @@ async def main(
     :param comparers: The comparers to use to select the best refactor.
     :param model: The model to use.
     """
+
     problems = sorted(os.listdir(training_path))
     start = max(start, 0)
     end = min(end, len(problems))
