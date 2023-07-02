@@ -458,7 +458,7 @@ async def generate_refactoring(
 
         # get history of past comparisons
         history_path = os.path.join(output_path, "history.json")
-        history_obj = get_json_with_default(history_path, {})
+        history_obj = get_json_with_default(history_path)
 
         # get the best refactor
         c = Counter()
