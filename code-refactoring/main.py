@@ -232,7 +232,7 @@ async def get_best_pairwise_refactor(
     assert len(history) == 0 or history[0]["defender"] == original_code
 
     # skip refactors that have already been tried
-    attackers = set(x["attacker"] for x in history)
+    attackers = set(x["attacker"]["code"] for x in history)
     rem_refactors = [refactor for refactor in refactors if refactor not in attackers]
 
     # shuffle the refactors in case the order matters
@@ -291,7 +291,7 @@ async def get_best_multinomial_refactor(
         history = dict()
 
     rem_refactors = [r for r in refactors if r not in history.get("fighters", [])]
-    best_refactor = history.get("winner") or original_code
+    best_refactor = history.get("winner", dict()).get("code", original_code)
 
     # if there are no refactors left, return the best refactor
     if len(rem_refactors) == 0:
