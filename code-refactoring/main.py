@@ -219,7 +219,7 @@ async def get_best_pairwise_refactor(
     def get_historical_best(history: List[Dict[str, Any]]) -> Optional[str]:
         if len(history) > 0:
             return (
-                history[-1]["attacker"]
+                history[-1]["attacker"]["code"]
                 if history[-1]["attacker_wins"]
                 else history[-1]["defender"]
             )
