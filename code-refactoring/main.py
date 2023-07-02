@@ -4,7 +4,7 @@ import json
 import os
 import random
 from collections import Counter, defaultdict
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm
@@ -202,19 +202,18 @@ async def get_best_pairwise_refactor(
     original_code: str,
     problem_description: str,
     refactors: List[str],
-    save_path: str,
+    history: Optional[Union[List, Dict]],
     model: str,
-) -> Optional[str]:
+) -> Optional[Tuple[Union[List, Dict], str]]:
     """
     Gets the best refactor for the given code using pairwise comparison.
 
     :param original_code: The original code.
     :param problem_description: The problem description to use.
     :param refactors: The refactors to use.
-    :param save_path: The path to save the history to.
-    :param attempts: The number of times to compare refactors.
+    :param history: The history of refactors.
     :param model: The model to use.
-    :return: The best refactor. (None if comparison failed.)
+    :return: The updated history and the best refactor (or None if analysis failed).
     """
 
     def get_historical_best(history: List[Dict[str, Any]]) -> Optional[str]:
@@ -226,9 +225,8 @@ async def get_best_pairwise_refactor(
             )
         return None
 
-    history_path = os.path.join(save_path, "history.json")
-    history_obj = get_json_with_default(history_path)
-    history = history_obj.get(get_best_pairwise_refactor.__name__, [])
+    if history is None:
+        history = []
 
     # make sure the history is valid
     assert len(history) == 0 or history[0]["defender"] == original_code
@@ -269,33 +267,28 @@ async def get_best_pairwise_refactor(
         if history[-1]["attacker_wins"]:
             best_refactor = new_refactor
 
-    # save the history
-    with open(history_path, "w") as f:
-        json.dump(history_obj, f, indent=4)
-    return best_refactor
+    return history, best_refactor
 
 
 async def get_best_multinomial_refactor(
     original_code: str,
     problem_description: str,
     refactors: List[str],
-    save_path: str,
+    history: Optional[Union[List, Dict]],
     model: str,
-) -> Optional[str]:
+) -> Tuple[Optional[Union[List, Dict]], Optional[str]]:
     """
     Gets the best refactor for the given code using a multinomial tournament.
 
     :param original_code: The original code.
     :param problem_description: The problem description to use.
     :param refactors: The refactors to use.
-    :param save_path: The path to save the history to.
+    :param history: The history of refactors.
     :param model: The model to use.
-    :return: The best refactor. (None if comparison failed.)
+    :return: The updated history and the best refactor (or None if analysis failed).
     """
-
-    history_path = os.path.join(save_path, "history.json")
-    history_obj = get_json_with_default(history_path)
-    history = history_obj.get(get_best_multinomial_refactor.__name__, dict())
+    if history is None:
+        history = dict()
 
     rem_refactors = [r for r in refactors if r not in history.get("fighters", [])]
     best_refactor = history.get("winner") or original_code
@@ -336,11 +329,7 @@ async def get_best_multinomial_refactor(
         }
     history["fighters"] += rem_refactors
 
-    # save the history
-    with open(history_path, "w") as f:
-        json.dump(history_obj, f, indent=4)
-
-    return history["winner"]
+    return history, history["winner"]["code"]
 
 
 COMPARERS = [get_best_pairwise_refactor, get_best_multinomial_refactor]
@@ -467,14 +456,24 @@ async def generate_refactoring(
             print(f"Could not generate any refactors for {path}")
             break
 
+        # get history of past comparisons
+        history_path = os.path.join(output_path, "history.json")
+        history_obj = get_json_with_default(history_path, {})
+
         # get the best refactor
         c = Counter()
         for comparer in comparers:
-            result = await comparer(
-                code, problem_question, refactors, refactor_path, model
-            )
+            name = comparer.__name__
+            history = history_obj.get(name)
+            result = await comparer(code, problem_question, refactors, history, model)
             if result is not None:
-                c[result] += 1
+                new_history, best_refactor = result
+                history_obj[name] = new_history
+                c[best_refactor] += 1
+
+        # save the history
+        with open(history_path, "w") as f:
+            json.dump(history_obj, f, indent=4)
 
         # if there is no best refactor, break
         if len(c) == 0:
