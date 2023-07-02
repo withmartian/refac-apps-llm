@@ -225,6 +225,7 @@ async def get_best_pairwise_refactor(
             )
         return None
 
+    print(f"History for pairwise: {history}")
     if history is None:
         history = []
 
@@ -287,6 +288,7 @@ async def get_best_multinomial_refactor(
     :param model: The model to use.
     :return: The updated history and the best refactor (or None if analysis failed).
     """
+    print(f"History for multinomial: {history}")
     if history is None:
         history = dict()
 
@@ -459,6 +461,8 @@ async def generate_refactoring(
         # get history of past comparisons
         history_path = os.path.join(output_path, "history.json")
         history_obj = get_json_with_default(history_path)
+
+        print(f"Overall History: {history_obj}")
 
         # get the best refactor
         c = Counter()
