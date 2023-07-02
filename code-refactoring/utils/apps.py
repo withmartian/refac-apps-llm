@@ -5,6 +5,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 
 import numpy as np
@@ -69,7 +70,7 @@ def validate_code(code: str, problem_path: str, display_stdout: bool = False) ->
     except Exception as e:
         print(f"Error with validate results: {e}")
 
-    # clean up
-    os.remove("refactor-temp/all_codes.json")
+    # clean up, remove refactor-temp directory, the ENTIRE directory
+    shutil.rmtree("refactor-temp")
 
     return res

@@ -417,16 +417,16 @@ async def generate_refactoring(
 
     problem_question = get_problem_question(problem_path)
     for i in range(num_refactors):
-        path = os.path.join(output_path, "final_refactoring.txt")
+        refactor_path = os.path.join(output_path, f"refactor-{i}")
+        end_path = os.path.join(refactor_path, "end.txt")
 
         # check cache
-        if os.path.exists(path):
-            with open(path, "r") as f:
+        if os.path.exists(end_path):
+            with open(end_path, "r") as f:
                 code = f.read()
             continue
 
         # otherwise generate potential refactors
-        refactor_path = os.path.join(output_path, f"refactor-{i}")
         os.makedirs(refactor_path, exist_ok=True)
         refactor_statuses = [
             refactor_code(
@@ -453,7 +453,7 @@ async def generate_refactoring(
 
         # if there are no refactors, break
         if len(refactors) == 0:
-            print(f"Could not generate any refactors for {path}")
+            print(f"Could not generate any refactors for {refactor_path}")
             break
 
         # get history of past comparisons
@@ -477,7 +477,7 @@ async def generate_refactoring(
 
         # if there is no best refactor, break
         if len(c) == 0:
-            print(f"Could not find best refactor for {path}")
+            print(f"Could not find best refactor for {refactor_path}")
             break
 
         # get the best refactor
@@ -488,7 +488,7 @@ async def generate_refactoring(
             break
 
         # save the best refactor
-        with open(path, "w") as f:
+        with open(end_path, "w") as f:
             f.write(best_refactor)
 
         # update the code
@@ -547,7 +547,7 @@ async def refactorings_main(
                 )
             )
 
-        results = await tqdm.gather(*minitasks, desc=f"Refactorings for Problem {id}")
+        results = await tqdm.gather(*minitasks, desc=f"Solutions for Problem {id}")
         with open(os.path.join(output_dir, id, "results.json"), "w") as f:
             json.dump(results, f, indent=4)
 
