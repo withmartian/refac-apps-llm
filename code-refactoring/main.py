@@ -226,6 +226,7 @@ async def get_best_pairwise_refactor(
         return None
 
     print(f"History for pairwise: {history}")
+    print(f"Original code: {original_code}")
     if history is None:
         history = []
 
