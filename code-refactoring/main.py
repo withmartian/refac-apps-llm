@@ -276,7 +276,7 @@ async def get_best_multinomial_refactor(
     refactors: List[str],
     history: Optional[Union[List, Dict]],
     model: str,
-) -> Tuple[Optional[Union[List, Dict]], Optional[str]]:
+) -> Optional[Tuple[Union[List, Dict], str]]:
     """
     Gets the best refactor for the given code using a multinomial tournament.
 
@@ -295,7 +295,7 @@ async def get_best_multinomial_refactor(
 
     # if there are no refactors left, return the best refactor
     if len(rem_refactors) == 0:
-        return best_refactor
+        return history, best_refactor
 
     fighters = [best_refactor] + rem_refactors
     order = list(range(len(fighters)))
